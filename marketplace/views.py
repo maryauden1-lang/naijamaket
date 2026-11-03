@@ -1,0 +1,458 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Q, F, Count
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.http import JsonResponse
+
+from .models import (
+    SiteSetting, StaticPage, Category, SubCategory, State, Area, Listing, 
+    ListingImage, SellerProfile, Favorite, Conversation, Message,
+    ReportedListing, SellerReview
+)
+from .forms import (
+    UserRegisterForm, ListingForm, ProfileUpdateForm, 
+    ReportListingForm, SellerReviewForm
+)
+
+
+def index_view(request):
+    site_settings = SiteSetting.objects.first()
+    if not site_settings:
+        site_settings = SiteSetting.objects.create()
+
+    search_query = request.GET.get('q', '').strip()
+    selected_category = request.GET.get('category', '')
+    selected_subcategory = request.GET.get('subcategory', '')
+    selected_state = request.GET.get('state', '')
+    selected_condition = request.GET.get('condition', '')
+
+    listings_queryset = Listing.objects.filter(status='active').select_related(
+        'seller', 'seller__seller_profile', 'category', 'subcategory', 'state', 'area'
+    ).prefetch_related('images').order_by('-is_featured', '-created_at')
+
+    if search_query:
+        listings_queryset = listings_queryset.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(area__name__icontains=search_query) |
+            Q(category__name__icontains=search_query)
+        )
+
+    if selected_category:
+        listings_queryset = listings_queryset.filter(category__slug=selected_category)
+
+    if selected_subcategory:
+        listings_queryset = listings_queryset.filter(subcategory__slug=selected_subcategory)
+
+    selected_state_obj = None
+    if selected_state:
+        listings_queryset = listings_queryset.filter(state__slug=selected_state)
+        selected_state_obj = State.objects.filter(slug=selected_state).first()
+
+    if selected_condition:
+        listings_queryset = listings_queryset.filter(condition=selected_condition)
+
+    # 20 items per page pagination
+    paginator = Paginator(listings_queryset, 20)
+    page_number = request.GET.get('page', 1)
+
+    try:
+        listings = paginator.page(page_number)
+    except PageNotAnInteger:
+        listings = paginator.page(1)
+    except EmptyPage:
+        listings = paginator.page(paginator.num_pages)
+
+    # Categories with live ad counts
+    try:
+        categories = Category.objects.annotate(
+            total_ads=Count('listings', filter=Q(listings__status='active'))
+        ).prefetch_related('subcategories').order_by('order', 'name')
+        list(categories)
+    except Exception:
+        categories = Category.objects.annotate(
+            total_ads=Count('listing', filter=Q(listing__status='active'))
+        ).prefetch_related('subcategories').order_by('order', 'name')
+
+    # States with live ad counts
+    try:
+        states_with_counts = State.objects.filter(is_active=True).annotate(
+            total_ads=Count('listing', filter=Q(listing__status='active'))
+        ).order_by('name')
+        list(states_with_counts)
+    except Exception:
+        states_with_counts = State.objects.filter(is_active=True).annotate(
+            total_ads=Count('listings', filter=Q(listings__status='active'))
+        ).order_by('name')
+
+    current_profile = None
+    user_saved_ids = []
+    unread_messages_count = 0
+    if request.user.is_authenticated:
+        current_profile, _ = SellerProfile.objects.get_or_create(
+            user=request.user,
+            defaults={'phone_number': '08000000000'}
+        )
+        user_saved_ids = list(Favorite.objects.filter(user=request.user).values_list('listing_id', flat=True))
+        unread_messages_count = Message.objects.filter(
+            Q(conversation__buyer=request.user) | Q(conversation__seller=request.user),
+            is_read=False
+        ).exclude(sender=request.user).count()
+
+    context = {
+        'settings': site_settings,
+        'listings': listings,
+        'page_obj': listings,
+        'categories': categories,
+        'states': states_with_counts,
+        'search_query': search_query,
+        'selected_category': selected_category,
+        'selected_subcategory': selected_subcategory,
+        'selected_state': selected_state,
+        'selected_state_obj': selected_state_obj,
+        'selected_condition': selected_condition,
+        'current_profile': current_profile,
+        'user_saved_ids': user_saved_ids,
+        'unread_messages_count': unread_messages_count,
+        'total_nigeria_ads': Listing.objects.filter(status='active').count(),
+    }
+    return render(request, 'marketplace/index.html', context)
+
+
+def listing_detail_view(request, slug):
+    site_settings = SiteSetting.objects.first()
+    if not site_settings:
+        site_settings = SiteSetting.objects.create()
+
+    listing = get_object_or_404(
+        Listing.objects.select_related('seller', 'seller__seller_profile', 'category', 'subcategory', 'state', 'area').prefetch_related('images'),
+        slug=slug
+    )
+    
+    Listing.objects.filter(pk=listing.pk).update(views_count=F('views_count') + 1)
+    
+    related_items = Listing.objects.filter(
+        category=listing.category, 
+        status='active'
+    ).exclude(id=listing.id).select_related('seller', 'seller__seller_profile', 'area', 'state').prefetch_related('images')[:4]
+
+    is_favorited = False
+    if request.user.is_authenticated:
+        is_favorited = Favorite.objects.filter(user=request.user, listing=listing).exists()
+
+    report_form = ReportListingForm()
+    review_form = SellerReviewForm()
+    seller_reviews = SellerReview.objects.filter(seller=listing.seller).select_related('reviewer')[:5]
+
+    return render(request, 'marketplace/listing_detail.html', {
+        'settings': site_settings,
+        'listing': listing,
+        'related_items': related_items,
+        'is_favorited': is_favorited,
+        'report_form': report_form,
+        'review_form': review_form,
+        'seller_reviews': seller_reviews,
+    })
+
+
+@login_required(login_url='marketplace:login')
+def toggle_favorite_view(request, listing_id):
+    listing = get_object_or_404(Listing, id=listing_id)
+    fav = Favorite.objects.filter(user=request.user, listing=listing)
+    if fav.exists():
+        fav.delete()
+        messages.info(request, "Item removed from your saved list.")
+    else:
+        Favorite.objects.create(user=request.user, listing=listing)
+        messages.success(request, "Item saved to your favorites!")
+    
+    next_url = request.META.get('HTTP_REFERER', 'marketplace:home')
+    return redirect(next_url)
+
+
+@login_required(login_url='marketplace:login')
+def saved_items_view(request):
+    favorites = Favorite.objects.filter(user=request.user).select_related(
+        'listing', 'listing__seller', 'listing__seller__seller_profile', 'listing__state', 'listing__area'
+    ).prefetch_related('listing__images')
+    return render(request, 'marketplace/saved_items.html', {'favorites': favorites})
+
+
+@login_required(login_url='marketplace:login')
+def dashboard_view(request):
+    user_listings = Listing.objects.filter(seller=request.user).order_by('-created_at')
+    active_count = user_listings.filter(status='active').count()
+    sold_count = user_listings.filter(status='sold').count()
+    total_views = sum(item.views_count for item in user_listings)
+
+    return render(request, 'marketplace/dashboard.html', {
+        'user_listings': user_listings,
+        'active_count': active_count,
+        'sold_count': sold_count,
+        'total_views': total_views,
+    })
+
+
+@login_required(login_url='marketplace:login')
+def edit_listing_view(request, listing_id):
+    listing = get_object_or_404(Listing, id=listing_id, seller=request.user)
+    if request.method == 'POST':
+        form = ListingForm(request.POST, instance=listing)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"'{listing.title}' updated successfully!")
+            return redirect('marketplace:dashboard')
+    else:
+        form = ListingForm(instance=listing)
+    return render(request, 'marketplace/edit_listing.html', {'form': form, 'listing': listing})
+
+
+@login_required(login_url='marketplace:login')
+def mark_sold_view(request, listing_id):
+    listing = get_object_or_404(Listing, id=listing_id, seller=request.user)
+    listing.status = 'sold'
+    listing.save()
+    messages.success(request, f"'{listing.title}' marked as Sold!")
+    return redirect('marketplace:dashboard')
+
+
+@login_required(login_url='marketplace:login')
+def delete_listing_view(request, listing_id):
+    listing = get_object_or_404(Listing, id=listing_id, seller=request.user)
+    listing.delete()
+    messages.info(request, "Listing deleted permanently.")
+    return redirect('marketplace:dashboard')
+
+
+@login_required(login_url='marketplace:login')
+def start_chat_view(request, listing_id):
+    listing = get_object_or_404(Listing, id=listing_id)
+    if listing.seller == request.user:
+        messages.warning(request, "You cannot message yourself about your own listing.")
+        return redirect('marketplace:listing_detail', slug=listing.slug)
+
+    conversation, _ = Conversation.objects.get_or_create(
+        listing=listing,
+        buyer=request.user,
+        defaults={'seller': listing.seller}
+    )
+    return redirect('marketplace:chat_detail', conversation_id=conversation.id)
+
+
+@login_required(login_url='marketplace:login')
+def inbox_view(request):
+    conversations = Conversation.objects.filter(
+        Q(buyer=request.user) | Q(seller=request.user)
+    ).select_related('listing', 'buyer', 'seller').prefetch_related('messages')
+    return render(request, 'marketplace/inbox.html', {'conversations': conversations})
+
+
+@login_required(login_url='marketplace:login')
+def chat_detail_view(request, conversation_id):
+    conversation = get_object_or_404(
+        Conversation.objects.select_related('listing', 'buyer', 'seller', 'seller__seller_profile', 'buyer__seller_profile'),
+        id=conversation_id
+    )
+
+    if request.user not in [conversation.buyer, conversation.seller]:
+        messages.error(request, "You do not have access to this conversation.")
+        return redirect('marketplace:inbox')
+
+    conversation.messages.filter(is_read=False).exclude(sender=request.user).update(is_read=True)
+
+    if request.method == 'POST':
+        message_text = request.POST.get('message', '').strip()
+        if message_text:
+            Message.objects.create(
+                conversation=conversation,
+                sender=request.user,
+                text=message_text
+            )
+            conversation.save()
+            return redirect('marketplace:chat_detail', conversation_id=conversation.id)
+
+    chat_messages = conversation.messages.all().select_related('sender')
+    return render(request, 'marketplace/chat_detail.html', {
+        'conversation': conversation,
+        'chat_messages': chat_messages,
+    })
+
+
+@login_required(login_url='marketplace:login')
+def report_ad_view(request, listing_id):
+    listing = get_object_or_404(Listing, id=listing_id)
+    if request.method == 'POST':
+        form = ReportListingForm(request.POST)
+        if form.is_valid():
+            report = form.save(commit=False)
+            report.listing = listing
+            report.reported_by = request.user
+            report.save()
+            messages.success(request, "Your safety report was submitted for administrative review.")
+    return redirect('marketplace:listing_detail', slug=listing.slug)
+
+
+@login_required(login_url='marketplace:login')
+def post_ad_view(request):
+    if request.method == 'POST':
+        form = ListingForm(request.POST)
+        files = request.FILES.getlist('images')
+
+        if not files:
+            messages.error(request, "Please upload at least one image of your item.")
+        elif form.is_valid():
+            listing = form.save(commit=False)
+            listing.seller = request.user
+            listing.status = 'active'
+            listing.save()
+
+            for idx, uploaded_file in enumerate(files):
+                ListingImage.objects.create(
+                    listing=listing,
+                    image=uploaded_file,
+                    is_cover=(idx == 0)
+                )
+
+            messages.success(request, f"Ad published with {len(files)} photo{'s' if len(files) > 1 else ''}!")
+            return redirect('marketplace:listing_detail', slug=listing.slug)
+    else:
+        form = ListingForm()
+
+    return render(request, 'marketplace/post_ad.html', {'form': form})
+
+
+def register_view(request):
+    if request.user.is_authenticated:
+        return redirect('marketplace:home')
+
+    if request.method == 'POST':
+        form = UserRegisterForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data['email']
+            full_name = form.cleaned_data['full_name'].strip()
+            password = form.cleaned_data['password']
+            phone = form.cleaned_data.get('phone_number') or '08000000000'
+
+            user = User.objects.create_user(
+                username=email,
+                email=email,
+                password=password,
+                first_name=full_name
+            )
+
+            SellerProfile.objects.create(
+                user=user,
+                phone_number=phone,
+                whatsapp_number=phone
+            )
+            login(request, user)
+            messages.success(request, f"Welcome to Naijamaket, {full_name}!")
+            return redirect('marketplace:home')
+    else:
+        form = UserRegisterForm()
+
+    return render(request, 'marketplace/register.html', {'form': form})
+
+
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('marketplace:home')
+
+    error_message = None
+    if request.method == 'POST':
+        identifier = request.POST.get('identifier', '').strip()
+        password = request.POST.get('password', '')
+
+        user = authenticate(request, username=identifier, password=password)
+        if not user:
+            try:
+                user_obj = User.objects.get(email=identifier)
+                user = authenticate(request, username=user_obj.username, password=password)
+            except User.DoesNotExist:
+                user = None
+
+        if user:
+            login(request, user)
+            messages.success(request, f"Welcome back, {user.first_name or user.username}!")
+            next_url = request.GET.get('next', 'marketplace:home')
+            return redirect(next_url)
+        else:
+            error_message = "Invalid email or password."
+
+    return render(request, 'marketplace/login.html', {'error_message': error_message})
+
+
+def logout_view(request):
+    logout(request)
+    messages.info(request, "You have been logged out.")
+    return redirect('marketplace:home')
+
+
+@login_required(login_url='marketplace:login')
+def profile_view(request):
+    profile, _ = SellerProfile.objects.get_or_create(
+        user=request.user,
+        defaults={'phone_number': '08000000000'}
+    )
+
+    if request.method == 'POST':
+        form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile details updated successfully!")
+            return redirect('marketplace:profile')
+    else:
+        form = ProfileUpdateForm(instance=profile)
+
+    return render(request, 'marketplace/profile.html', {
+        'form': form,
+        'profile': profile,
+    })
+
+
+def static_page_view(request, slug):
+    site_settings = SiteSetting.objects.first()
+    if not site_settings:
+        site_settings = SiteSetting.objects.create()
+
+    page = get_object_or_404(StaticPage, slug=slug)
+    return render(request, 'marketplace/static_page.html', {
+        'settings': site_settings,
+        'page': page,
+    })
+
+
+def ajax_search_view(request):
+    query = request.GET.get('q', '').strip()
+    results = []
+    if len(query) >= 2:
+        matches = Listing.objects.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query) |
+            Q(area__name__icontains=query) |
+            Q(category__name__icontains=query),
+            status='active'
+        ).select_related('area', 'state').prefetch_related('images')[:6]
+
+        for item in matches:
+            first_img = item.images.first()
+            results.append({
+                'title': item.title,
+                'price': f"{item.price:,.2f}",
+                'slug': item.slug,
+                'location': item.area.name if item.area else (item.state.name if item.state else "Nigeria"),
+                'image': first_img.image.url if first_img else None,
+            })
+    return JsonResponse({'results': results})
+
+
+def get_areas_for_state_view(request):
+    state_id = request.GET.get('state_id')
+    areas = []
+    if state_id:
+        area_objs = Area.objects.filter(state_id=state_id).order_by('name')
+        areas = [{'id': a.id, 'name': a.name} for a in area_objs]
+    return JsonResponse({'areas': areas})

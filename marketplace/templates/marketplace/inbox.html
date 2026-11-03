@@ -1,0 +1,77 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Messages - Naijamaket</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #F8FAFC; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(226, 232, 240, 0.85);
+    }
+  </style>
+</head>
+<body class="text-slate-900 min-h-screen flex flex-col">
+
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+    <div class="max-w-4xl mx-auto px-4 h-20 flex items-center justify-between">
+      <a href="{% url 'marketplace:home' %}" class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-2xl bg-emerald-600 flex items-center justify-center text-white font-black text-xl">N</div>
+        <span class="text-xl font-black">Naijamaket<span class="text-emerald-600">.</span></span>
+      </a>
+
+      <a href="{% url 'marketplace:home' %}" class="text-xs font-bold text-slate-600 hover:text-slate-900">
+        ← Marketplace Feed
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-8 flex-1 w-full">
+    <h1 class="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
+      <i data-lucide="inbox" class="w-5 h-5 text-emerald-600"></i>
+      <span>Conversations</span>
+    </h1>
+
+    <div class="glass-card rounded-3xl p-4 sm:p-6 shadow-sm space-y-3">
+      {% for conv in conversations %}
+        <a href="{% url 'marketplace:chat_detail' conv.id %}" class="flex items-center justify-between p-4 rounded-2xl hover:bg-slate-50 border border-slate-100 transition-colors">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden shrink-0">
+              {% if conv.listing.images.first %}
+                <img src="{{ conv.listing.images.first.image.url }}" alt="{{ conv.listing.title }}" class="w-full h-full object-cover">
+              {% else %}
+                <div class="w-full h-full flex items-center justify-center text-slate-400"><i data-lucide="image" class="w-5 h-5"></i></div>
+              {% endif %}
+            </div>
+
+            <div>
+              <h2 class="text-xs font-extrabold text-slate-900">{{ conv.listing.title }}</h2>
+              <p class="text-[11px] text-slate-500 mt-0.5">
+                {% if conv.seller == user %}
+                  Buyer: <strong>{{ conv.buyer.username }}</strong>
+                {% else %}
+                  Seller: <strong>{{ conv.seller.username }}</strong>
+                {% endif %}
+              </p>
+            </div>
+          </div>
+
+          <span class="text-[10px] font-semibold text-slate-400">{{ conv.updated_at|naturaltime }}</span>
+        </a>
+      {% empty %}
+        <p class="text-xs text-slate-400 italic py-8 text-center">You have no active message threads yet.</p>
+      {% endfor %}
+    </div>
+  </main>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

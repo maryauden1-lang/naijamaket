@@ -1,0 +1,20 @@
+# Virtual environment
+venv/
+env/
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local database (do not push local tests)
+*.sqlite3
+db.sqlite3
+
+# Uploaded listing images and collected static
+media/
+staticfiles/
+
+# OS cache
+Thumbs.db
+.DS_Store

@@ -1,0 +1,802 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6D28D9">
+  <title>{{ settings.site_name|default:"Naijamaket" }} - {{ settings.tagline|default:"Verified Marketplace" }}</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    body { 
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #F8F9FA;
+    }
+    .jiji-purple-canvas {
+      background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%);
+    }
+    .sell-btn-orange {
+      background-color: #FF8A00;
+      box-shadow: 0 4px 14px rgba(255, 138, 0, 0.35);
+    }
+    .sell-btn-orange:hover {
+      background-color: #EA7A00;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="text-slate-900 antialiased min-h-screen flex flex-col pb-20 sm:pb-0 selection:bg-purple-600 selection:text-white">
+
+  <!-- ========================================================= -->
+  <!-- 1. TOP WHITE HEADER BAR (LOGO, EN, AUTH, SELL)           -->
+  <!-- ========================================================= -->
+  <header class="bg-white border-b border-slate-200/90 sticky top-0 z-50 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-22 flex items-center justify-between gap-3 sm:gap-6">
+      
+      <!-- Brand Logo -->
+      <a href="{% url 'marketplace:home' %}" class="flex items-center gap-2.5 group shrink-0 py-1">
+        {% if settings.logo %}
+          <img 
+            src="{{ settings.logo.url }}" 
+            alt="{{ settings.site_name }}" 
+            class="h-12 sm:h-16 w-auto max-w-[180px] sm:max-w-[260px] object-contain group-hover:scale-102 transition-transform duration-200"
+          >
+        {% else %}
+          <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-purple-700 text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-md group-hover:scale-105 transition-transform">
+            {{ settings.site_name|slice:":1"|upper|default:"N" }}
+          </div>
+          <span class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+            {{ settings.site_name|default:"Naijamaket" }}
+          </span>
+        {% endif %}
+      </a>
+
+      <!-- Right Controls: Language Selector, Auth Links, Orange SELL Button -->
+      <div class="flex items-center gap-2.5 sm:gap-6">
+        
+        <!-- Language Selector Dropdown -->
+        <div class="relative">
+          <button 
+            type="button" 
+            onclick="document.getElementById('langDropdown').classList.toggle('hidden')"
+            class="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-slate-700 hover:text-purple-700 transition-colors py-1.5 px-2 rounded-xl hover:bg-slate-100"
+          >
+            <!-- Globe SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-purple-700 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+            </svg>
+            <span id="currentLangLabel">EN</span>
+            <!-- Chevron Down SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </button>
+
+          <div id="langDropdown" class="hidden absolute right-0 top-[calc(100%+8px)] w-44 bg-white text-slate-800 rounded-2xl p-1.5 shadow-2xl border border-slate-100 z-50 text-xs font-bold">
+            <button type="button" onclick="changeLanguage('EN')" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-purple-50 hover:text-purple-700 flex items-center justify-between">
+              <span>English</span>
+              <span class="text-[10px] text-purple-600 font-extrabold">EN</span>
+            </button>
+            <button type="button" onclick="changeLanguage('YOR')" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-purple-50 hover:text-purple-700 flex items-center justify-between">
+              <span>Yorùbá</span>
+              <span class="text-[10px] text-purple-600 font-extrabold">YOR</span>
+            </button>
+            <button type="button" onclick="changeLanguage('IGB')" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-purple-50 hover:text-purple-700 flex items-center justify-between">
+              <span>Asụsụ Igbo</span>
+              <span class="text-[10px] text-purple-600 font-extrabold">IGB</span>
+            </button>
+            <button type="button" onclick="changeLanguage('HAU')" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-purple-50 hover:text-purple-700 flex items-center justify-between">
+              <span>Harshen Hausa</span>
+              <span class="text-[10px] text-purple-600 font-extrabold">HAU</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Auth Links: Sign in | Registration (or Username | Logout) -->
+        {% if user.is_authenticated %}
+          <div class="flex items-center gap-2 text-xs sm:text-sm font-extrabold text-slate-800">
+            <a href="{% url 'marketplace:dashboard' %}" class="hover:text-purple-700 flex items-center gap-1.5 max-w-[85px] sm:max-w-[140px] truncate">
+              <span class="truncate">{{ user.first_name|default:user.username }}</span>
+            </a>
+            <span class="text-slate-300">|</span>
+            <a href="{% url 'marketplace:logout' %}" class="text-rose-600 hover:text-rose-700 font-bold">Logout</a>
+          </div>
+        {% else %}
+          <div class="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-extrabold text-slate-800">
+            <a href="{% url 'marketplace:login' %}" class="hover:text-purple-700 whitespace-nowrap">Sign in</a>
+            <span class="text-slate-300">|</span>
+            <a href="{% url 'marketplace:register' %}" class="hover:text-purple-700 whitespace-nowrap">Registration</a>
+          </div>
+        {% endif %}
+
+        <!-- Jiji Orange SELL Button -->
+        <a 
+          href="{% url 'marketplace:post_ad' %}" 
+          class="sell-btn-orange text-white text-xs sm:text-sm font-black px-4 sm:px-8 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl uppercase tracking-wider transition-all hover:scale-105 active:scale-95 shrink-0"
+        >
+          SELL
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================= -->
+  <!-- 2. PURPLE HERO CANVAS (SEARCH BAR & LOCATION SELECTOR)   -->
+  <!-- ========================================================= -->
+  <section class="jiji-purple-canvas text-white py-7 sm:py-12 shadow-inner">
+    <div class="max-w-4xl mx-auto px-3 sm:px-6 text-center">
+      
+      <h2 id="heroQuestionTitle" class="text-lg sm:text-3xl font-extrabold tracking-tight text-white mb-3 sm:mb-6">
+        What are you looking for?
+      </h2>
+
+      <!-- Side-by-Side Unified Search Row -->
+      <div class="flex flex-row items-stretch gap-1.5 sm:gap-3 max-w-3xl mx-auto relative">
+        
+        <!-- Left: Compact "All Nigeria" Dropdown Button -->
+        <div class="relative shrink-0 w-[122px] sm:w-48">
+          <button 
+            type="button" 
+            id="stateDropdownBtn" 
+            onclick="document.getElementById('stateDropdownMenu').classList.toggle('hidden')"
+            class="w-full bg-white text-slate-800 font-bold text-[11px] sm:text-sm h-11 sm:h-14 px-2 sm:px-4 rounded-xl sm:rounded-2xl flex items-center justify-between shadow-md hover:bg-slate-50 transition-colors"
+          >
+            <span class="truncate">{{ selected_state_obj.name|default:"All Nigeria" }}</span>
+            <!-- Chevron Down SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 shrink-0 ml-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </button>
+
+          <!-- Dropdown List of States -->
+          <div id="stateDropdownMenu" class="hidden absolute left-0 top-[calc(100%+6px)] w-64 sm:w-72 bg-white text-slate-800 rounded-2xl p-2 shadow-2xl border border-slate-100 z-50 max-h-72 sm:max-h-80 overflow-y-auto text-left">
+            <a href="?{% if search_query %}q={{ search_query }}&{% endif %}{% if selected_category %}category={{ selected_category }}&{% endif %}" class="flex items-center justify-between px-3 py-2 text-xs font-extrabold text-purple-700 hover:bg-purple-50 rounded-xl">
+              <span>All Nigeria (Entire Feed)</span>
+              <span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-black">{{ total_nigeria_ads }}</span>
+            </a>
+            <div class="h-px bg-slate-100 my-1"></div>
+            {% for st in states %}
+              <a 
+                href="?state={{ st.slug }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}" 
+                class="flex items-center justify-between px-3 py-1.5 text-xs text-slate-700 hover:text-purple-700 hover:bg-purple-50 rounded-xl transition-colors {% if selected_state == st.slug %}font-bold text-purple-700 bg-purple-50{% endif %}"
+              >
+                <span>{{ st.name }}</span>
+                <span class="text-[10px] text-slate-400 font-semibold">{{ st.total_ads }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Right: "I am looking for..." Live Search Input with Search Icon -->
+        <div class="flex-1 relative min-w-0">
+          <form action="{% url 'marketplace:home' %}" method="GET" class="w-full h-full">
+            {% if selected_state %}
+              <input type="hidden" name="state" value="{{ selected_state }}">
+            {% endif %}
+            {% if selected_category %}
+              <input type="hidden" name="category" value="{{ selected_category }}">
+            {% endif %}
+
+            <div class="relative w-full h-full">
+              <input 
+                type="text" 
+                id="liveSearchInput"
+                name="q" 
+                value="{{ search_query }}"
+                autocomplete="off"
+                placeholder="I am looking for..." 
+                class="w-full bg-white text-slate-900 text-xs sm:text-base h-11 sm:h-14 pl-3.5 sm:pl-5 pr-10 sm:pr-12 rounded-xl sm:rounded-2xl shadow-md outline-hidden placeholder-slate-400 focus:ring-3 focus:ring-purple-400/40 transition-all"
+              >
+              <button type="submit" class="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-purple-700 transition-colors">
+                <!-- Search SVG -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 hover:text-purple-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                </svg>
+              </button>
+            </div>
+          </form>
+
+          <!-- Instant AJAX Popup -->
+          <div id="liveSearchResults" class="hidden absolute left-0 right-0 top-[calc(100%+6px)] bg-white rounded-2xl p-2 shadow-2xl border border-slate-100 z-50 max-h-80 overflow-y-auto text-left text-slate-800"></div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Alerts -->
+  {% if messages %}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 w-full">
+      {% for message in messages %}
+        <div class="p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between border {% if message.tags == 'success' %}bg-purple-500/10 border-purple-500/20 text-purple-950{% else %}bg-rose-500/10 border-rose-500/20 text-rose-800{% endif %}">
+          <span>{{ message }}</span>
+          <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-700">✕</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- MOBILE ONLY: Jiji Category Circles Slider (Top of Feed) -->
+  <section aria-label="Mobile Categories" class="block lg:hidden bg-white border-b border-slate-200 py-3.5 px-3 shadow-2xs">
+    <div class="flex items-start gap-3 overflow-x-auto no-scrollbar py-1">
+      <a href="{% url 'marketplace:home' %}" class="flex flex-col items-center gap-1.5 shrink-0 w-16 text-center">
+        <div class="w-13 h-13 rounded-2xl flex items-center justify-center transition-all {% if not selected_category %}bg-purple-700 text-white shadow-md{% else %}bg-slate-100 text-slate-600{% endif %}">
+          <!-- Grid Icon SVG -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
+          </svg>
+        </div>
+        <span class="text-[10px] font-bold text-slate-700 truncate w-full">All Feed</span>
+      </a>
+
+      {% for cat in categories %}
+      <a href="?category={{ cat.slug }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_state %}&state={{ selected_state }}{% endif %}" class="flex flex-col items-center gap-1.5 shrink-0 w-16 text-center group">
+        <div class="w-13 h-13 rounded-2xl flex items-center justify-center p-2.5 overflow-hidden transition-all bg-slate-50 border border-slate-200 {% if selected_category == cat.slug %}border-2 border-purple-600 ring-2 ring-purple-500/20 bg-purple-50{% endif %}">
+          {% if cat.icon %}
+            <img src="{{ cat.icon.url }}" alt="{{ cat.name }}" class="w-full h-full object-contain">
+          {% else %}
+            <!-- Tag Icon SVG Fallback -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-slate-500 group-hover:text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r=".5" fill="currentColor"/>
+            </svg>
+          {% endif %}
+        </div>
+        <span class="text-[10px] font-bold text-slate-700 group-hover:text-purple-600 truncate w-full">{{ cat.name }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ========================================================= -->
+  <!-- MAIN LAYOUT: Desktop Sidebar (Left) + 2-Column Grid (Right) -->
+  <!-- ========================================================= -->
+  <main class="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-4 sm:py-8 flex-1 w-full">
+    
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-8 items-start">
+      
+      <!-- DESKTOP LEFT SIDEBAR: Categories with Flyouts -->
+      <aside aria-label="Market Categories" class="hidden lg:block lg:col-span-1 bg-white rounded-3xl p-3.5 shadow-sm border border-slate-200/80 relative z-30">
+        <div class="px-3 py-2.5 border-b border-slate-100 flex items-center justify-between">
+          <span class="text-xs font-black text-slate-800 uppercase tracking-wider">All Categories</span>
+          <span class="text-[10px] font-bold bg-purple-100 text-purple-800 px-2.5 py-0.5 rounded-full">Live Market</span>
+        </div>
+
+        <nav aria-label="Category Directory" class="mt-2.5 space-y-1">
+          {% for cat in categories %}
+          <div class="group relative">
+            <a 
+              href="?category={{ cat.slug }}{% if selected_state %}&state={{ selected_state }}{% endif %}" 
+              class="w-full flex items-center justify-between p-2.5 rounded-2xl hover:bg-purple-50/70 transition-all text-left {% if selected_category == cat.slug %}bg-purple-50 border border-purple-500/30{% endif %}"
+            >
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden border border-slate-200 group-hover:border-purple-400">
+                  {% if cat.icon %}
+                    <img src="{{ cat.icon.url }}" alt="{{ cat.name }}" class="w-5 h-5 object-contain">
+                  {% else %}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-500 group-hover:text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r=".5" fill="currentColor"/>
+                    </svg>
+                  {% endif %}
+                </div>
+
+                <div>
+                  <h3 class="text-xs font-extrabold text-slate-800 group-hover:text-purple-600 transition-colors line-clamp-1">
+                    {{ cat.name }}
+                  </h3>
+                  <span class="text-[10px] font-semibold text-slate-400">
+                    {{ cat.total_ads|default:0|intcomma }} ad{{ cat.total_ads|pluralize }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Chevron Right SVG -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-300 group-hover:text-purple-600 group-hover:translate-x-0.5 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m9 18 6-6-6-6"/>
+              </svg>
+            </a>
+
+            <!-- Subcategories Flyout Drawer -->
+            {% if cat.subcategories.all %}
+            <div class="hidden lg:group-hover:flex flex-col absolute left-[calc(100%+8px)] top-0 w-80 bg-white rounded-3xl p-4 shadow-2xl border border-slate-200 z-50">
+              <div class="pb-2.5 mb-2 border-b border-slate-100 flex items-center justify-between">
+                <span class="text-xs font-black text-slate-900">{{ cat.name }}</span>
+                <a href="?category={{ cat.slug }}" class="text-[11px] font-bold text-purple-600 hover:underline">View All →</a>
+              </div>
+
+              <div class="space-y-1 max-h-[380px] overflow-y-auto pr-1">
+                {% for sub in cat.subcategories.all %}
+                <a 
+                  href="?category={{ cat.slug }}&subcategory={{ sub.slug }}" 
+                  class="flex items-center justify-between p-2 rounded-xl hover:bg-purple-50 transition-colors text-left"
+                >
+                  <span class="text-xs font-bold text-slate-700 hover:text-purple-600">{{ sub.name }}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M7 7h10v10"/><path d="M7 17 17 7"/>
+                  </svg>
+                </a>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          {% empty %}
+          <p class="text-xs text-slate-400 p-3 italic">No categories created yet.</p>
+          {% endfor %}
+        </nav>
+      </aside>
+
+      <!-- RIGHT COLUMN: 2-Column Mobile & 3-Column Desktop Feed -->
+      <div class="lg:col-span-3 space-y-4 sm:space-y-6 min-w-0 w-full">
+        
+        <!-- Section Title Header -->
+        <div class="flex items-center justify-between px-1">
+          <div>
+            <h2 class="text-sm sm:text-lg font-black text-slate-900 tracking-tight">
+              {% if selected_state_obj %}
+                Ads in {{ selected_state_obj.name }}
+              {% elif selected_subcategory %}
+                {{ selected_subcategory|title }}
+              {% elif selected_category %}
+                {{ selected_category|title }} Listings
+              {% elif search_query %}
+                Search for "{{ search_query }}"
+              {% else %}
+                Market Feed
+              {% endif %}
+            </h2>
+            <p class="text-[10px] sm:text-[11px] font-semibold text-slate-400">{{ listings.paginator.count|default:listings|length }} item{{ listings.paginator.count|pluralize }} found</p>
+          </div>
+
+          {% if selected_category or selected_subcategory or search_query or selected_state %}
+            <a href="{% url 'marketplace:home' %}" class="text-[10px] sm:text-[11px] font-bold text-purple-600 bg-purple-50 px-2 sm:px-2.5 py-1 rounded-lg border border-purple-200">
+              Clear ✕
+            </a>
+          {% endif %}
+        </div>
+
+        <!-- STRICT 2 COLUMNS ON MOBILE (grid-cols-2) & 3 COLUMNS ON DESKTOP -->
+        <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 w-full">
+          {% for item in listings %}
+          <div class="w-full min-w-0 bg-white rounded-xl sm:rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col group border border-slate-200 relative">
+            
+            <a href="{% url 'marketplace:listing_detail' item.slug %}" class="absolute inset-0 z-10" aria-label="View {{ item.title }}"></a>
+
+            <!-- Compact Image Area -->
+            <div class="relative aspect-square w-full bg-slate-100 overflow-hidden">
+              {% if item.images.first %}
+                <img 
+                  src="{{ item.images.first.image.url }}" 
+                  alt="{{ item.title }}" 
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                >
+              {% else %}
+                <div class="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                  </svg>
+                </div>
+              {% endif %}
+
+              <!-- Verified Seller Badge at Top of Card -->
+              {% if item.seller.seller_profile.is_nin_verified %}
+                <div class="absolute top-1.5 left-1.5 z-20 flex items-center gap-1 bg-white/95 backdrop-blur-md px-1.5 py-0.5 rounded-full shadow-xs border border-blue-200">
+                  <span class="text-[8px] font-black text-blue-700 tracking-tight">Verified</span>
+                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M7.06383 0.985077C7.33981 0.772642 7.66986 0.666667 7.99984 0.666748C8.32981 0.666667 8.65986 0.772642 8.93585 0.985077L9.71826 1.58584L10.6988 1.45682C11.3888 1.36588 12.0527 1.75039 12.3189 2.39207L12.6956 3.30452L13.6066 3.68068L13.6079 3.68122C14.2496 3.94745 14.634 4.61164 14.5431 5.30164L14.4142 6.28134L15.0153 7.06426C15.1741 7.27109 15.2735 7.50843 15.3133 7.7534C15.3423 7.93203 15.3396 8.11472 15.3051 8.29262C15.2608 8.5213 15.1642 8.742 15.0153 8.93591L14.4142 9.71883L14.5431 10.6985C14.634 11.3885 14.2496 12.0527 13.6079 12.3189L13.6066 12.3195L12.6956 12.6956L12.3189 13.6081C12.0527 14.2498 11.3888 14.6343 10.6988 14.5433L9.71826 14.4143L8.93585 15.0151C8.65986 15.2275 8.32981 15.3335 7.99984 15.3334C7.66986 15.3335 7.33981 15.2275 7.06383 15.0151L6.28141 14.4143L5.30087 14.5433C4.61083 14.6343 3.94699 14.2498 3.6808 13.6081L3.30412 12.6956L2.39303 12.3195L2.39173 12.3189C1.75005 12.0527 1.36565 11.3885 1.45657 10.6985L1.58547 9.71883L0.984385 8.93591C0.811485 8.71075 0.709028 8.44947 0.677232 8.18153C0.631114 7.79303 0.733722 7.39067 0.984385 7.06426L1.58547 6.28134L1.45657 5.30164C1.36565 4.61164 1.75005 3.94745 2.39173 3.68122L2.39303 3.68068L3.30412 3.30452L3.6808 2.39207C3.94699 1.75039 4.61083 1.36588 5.30087 1.45682L6.28141 1.58584L7.06383 0.985077ZM10.8046 6.80482C11.0649 6.54447 11.0649 6.12236 10.8046 5.86201C10.5442 5.60166 10.1221 5.60166 9.86177 5.86201L7.33317 8.39061L6.47124 7.52868C6.21089 7.26833 5.78878 7.26833 5.52843 7.52868C5.26808 7.78903 5.26808 8.21114 5.52843 8.47149L6.86177 9.80482C7.12212 10.0652 7.54423 10.0652 7.80458 9.80482L10.8046 6.80482Z" fill="#1B65FF"/>
+                    <path d="M6 7.99992L7.33333 9.33325L10.3333 6.33325" stroke="white" stroke-width="1.33" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+              {% elif item.is_featured %}
+                <span class="absolute top-1.5 left-1.5 z-20 bg-purple-700 text-white text-[8px] font-black tracking-wider px-1.5 py-0.5 rounded-md uppercase">
+                  VIP
+                </span>
+              {% endif %}
+
+              <!-- HEART ICON (INLINE SVG) -->
+              <a href="{% url 'marketplace:toggle_favorite' item.id %}" class="absolute top-1.5 right-1.5 z-20 w-7 h-7 rounded-full bg-white/95 backdrop-blur-md flex items-center justify-center shadow-xs hover:scale-110 transition-transform">
+                {% if item.id in user_saved_ids %}
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-rose-600 fill-rose-600" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                  </svg>
+                {% else %}
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                  </svg>
+                {% endif %}
+              </a>
+
+              <span class="absolute bottom-1.5 left-1.5 bg-slate-950/70 backdrop-blur-md text-white text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-white/10 z-20">
+                {{ item.get_condition_display }}
+              </span>
+            </div>
+
+            <!-- Details -->
+            <div class="p-2 sm:p-3 flex flex-col flex-1 justify-between min-w-0">
+              <div>
+                <p class="text-[9px] sm:text-[10px] font-semibold text-slate-400 flex items-center gap-1 mb-0.5 truncate">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5 text-purple-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <span class="truncate">{{ item.area.name|default:item.state.name|default:"Nigeria" }}</span>
+                </p>
+
+                <h3 class="font-bold text-slate-800 line-clamp-2 text-xs leading-snug group-hover:text-purple-600 transition-colors mb-1">
+                  {{ item.title }}
+                </h3>
+
+                <p class="text-xs sm:text-base font-black text-slate-900 tracking-tight">
+                  ₦{{ item.price|intcomma }}
+                </p>
+              </div>
+
+              <!-- Seller Row -->
+              <div class="pt-1.5 sm:pt-2 border-t border-slate-100 mt-2 flex items-center justify-between relative z-20">
+                <div class="flex items-center gap-1 truncate">
+                  <div class="relative w-4 h-4 sm:w-5 sm:h-5 rounded-full overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
+                    {% if item.seller.seller_profile.avatar %}
+                      <img src="{{ item.seller.seller_profile.avatar.url }}" alt="{{ item.seller.username }}" class="w-full h-full object-cover">
+                    {% else %}
+                      <div class="w-full h-full bg-purple-700 flex items-center justify-center text-white text-[7px] sm:text-[8px] font-black">
+                        {{ item.seller.username|slice:":1"|upper }}
+                      </div>
+                    {% endif %}
+                  </div>
+                  <span class="text-[9px] sm:text-[10px] font-bold text-slate-700 truncate max-w-[50px] sm:max-w-[70px]">
+                    {{ item.seller.username }}
+                  </span>
+                </div>
+
+                <a 
+                  href="https://wa.me/{{ item.seller.seller_profile.whatsapp_number|default:item.seller.seller_profile.phone_number }}?text=Hello%20{{ item.seller.username }},%20I%20am%20interested%20in%20'{{ item.title }}'%20listed%20on%20{{ settings.site_name|default:'Naijamaket' }}." 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  class="p-1 sm:px-2 sm:py-0.5 rounded bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white transition-all shrink-0 font-bold text-[9px] flex items-center gap-1"
+                  title="WhatsApp"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>
+                  </svg>
+                </a>
+              </div>
+
+            </div>
+          </div>
+          {% empty %}
+          <div class="col-span-full py-16 text-center">
+            <div class="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-purple-600 border border-purple-100">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+              </svg>
+            </div>
+            <h3 class="text-base font-extrabold text-slate-900 mb-1">No Active Listings Found</h3>
+            <p class="text-xs text-slate-500 max-w-xs mx-auto mb-4">Be the first to list an item in this category.</p>
+            <a href="{% url 'marketplace:post_ad' %}" class="inline-flex items-center gap-1.5 bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-md transition-all">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14"/><path d="M12 5v14"/>
+              </svg>
+              <span>Post Ad</span>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Pagination Bar -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Pagination" class="flex items-center justify-center gap-1.5 pt-6 pb-4">
+          {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_state %}&state={{ selected_state }}{% endif %}" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold hover:bg-slate-50 transition-colors">
+              ‹
+            </a>
+          {% endif %}
+
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+              <span class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center text-xs font-black shadow-md">
+                {{ num }}
+              </span>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+              <a href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_state %}&state={{ selected_state }}{% endif %}" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold hover:bg-slate-50 transition-colors">
+                {{ num }}
+              </a>
+            {% endif %}
+          {% endfor %}
+
+          {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_state %}&state={{ selected_state }}{% endif %}" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold hover:bg-slate-50 transition-colors">
+              ›
+            </a>
+          {% endif %}
+        </nav>
+        {% endif %}
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- 3. CURVED PURPLE SWOOP FOOTER (CONNECTED TO ADMIN PAGES)   -->
+  <!-- ========================================================= -->
+  <footer class="mt-14 relative w-full overflow-hidden">
+    
+    <!-- Layered SVG Wave Transition -->
+    <div class="w-full leading-none -mb-1">
+      <svg viewBox="0 0 1440 220" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto block" preserveAspectRatio="none">
+        <path d="M0,80 C360,220 1080,220 1440,80 L1440,220 L0,220 Z" fill="#4C1D95" />
+        <path d="M0,110 C420,240 1020,210 1440,60 L1440,220 L0,220 Z" fill="#6D28D9" fill-opacity="0.9" />
+        <path d="M0,140 C480,240 960,190 1440,40 L1440,220 L0,220 Z" fill="#7C3AED" />
+        <path d="M480,185 C750,205 1100,165 1440,30" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.95" />
+      </svg>
+    </div>
+
+    <!-- Solid Deep Purple Content Basin -->
+    <div class="bg-[#4C1D95] text-white pt-8 pb-16 sm:pb-12 border-t border-purple-600/30">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <!-- Grid: 4 Column Clean Directory -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-8 pb-10 border-b border-purple-400/20">
+          
+          <!-- Brand Column -->
+          <div class="col-span-2 space-y-3.5">
+            <a href="{% url 'marketplace:home' %}" class="flex items-center gap-2.5">
+              {% if settings.logo %}
+                <img src="{{ settings.logo.url }}" alt="{{ settings.site_name }}" class="h-10 w-auto object-contain">
+              {% else %}
+                <div class="w-9 h-9 rounded-xl bg-white text-purple-900 font-black text-xl flex items-center justify-center shadow-md">
+                  {{ settings.site_name|slice:":1"|upper|default:"N" }}
+                </div>
+                <span class="text-2xl font-black tracking-tight text-white">{{ settings.site_name|default:"Naijamaket" }}</span>
+              {% endif %}
+            </a>
+            <p class="text-xs text-purple-200/80 leading-relaxed max-w-sm">
+              Nigeria's verified digital trading marketplace. Connect directly with authentic local sellers across Lagos, Abuja, Ogun, Port Harcourt, and Kano for phones, vehicles, electronics, and commercial goods.
+            </p>
+            <div class="flex items-center gap-3 pt-2">
+              {% if settings.facebook_url %}
+              <a href="{{ settings.facebook_url }}" target="_blank" rel="noopener noreferrer" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors" title="Facebook">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              </a>
+              {% endif %}
+              {% if settings.twitter_url %}
+              <a href="{{ settings.twitter_url }}" target="_blank" rel="noopener noreferrer" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors" title="X (Twitter)">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              </a>
+              {% endif %}
+              {% if settings.instagram_url %}
+              <a href="{{ settings.instagram_url }}" target="_blank" rel="noopener noreferrer" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors" title="Instagram">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+              </a>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- About & Legal (Dynamic Routes from Admin) -->
+          <div class="space-y-3">
+            <h4 class="text-xs font-black text-white uppercase tracking-wider">About & Legal</h4>
+            <ul class="space-y-2 text-xs text-purple-200/70 font-medium">
+              <li><a href="{% url 'marketplace:static_page' 'about-us' %}" class="hover:text-white transition-colors">About Naijamaket</a></li>
+              <li><a href="{% url 'marketplace:static_page' 'terms-of-service' %}" class="hover:text-white transition-colors">Terms of Service</a></li>
+              <li><a href="{% url 'marketplace:static_page' 'privacy-policy' %}" class="hover:text-white transition-colors">Privacy Policy</a></li>
+              <li><a href="{% url 'marketplace:static_page' 'billing-refund-policy' %}" class="hover:text-white transition-colors">Billing & Refund Policy</a></li>
+              <li><a href="{% url 'marketplace:static_page' 'cookie-policy' %}" class="hover:text-white transition-colors">Cookie Policy</a></li>
+              <li><a href="{% url 'marketplace:static_page' 'nin-verification' %}" class="hover:text-white transition-colors">NIN Verification Rules</a></li>
+            </ul>
+          </div>
+
+          <!-- Trust & Safety (Dynamic Routes from Admin) -->
+          <div class="space-y-3">
+            <h4 class="text-xs font-black text-white uppercase tracking-wider">Trust & Safety</h4>
+            <ul class="space-y-2 text-xs text-purple-200/70 font-medium">
+              <li><a href="{% url 'marketplace:static_page' 'safety-tips' %}" class="hover:text-white transition-colors">Safety Tips for Buyers</a></li>
+              <li><a href="{% url 'marketplace:static_page' 'seller-verification' %}" class="hover:text-white transition-colors">Seller Verification Process</a></li>
+              <li><a href="{% url 'marketplace:static_page' 'anti-scam-fraud' %}" class="hover:text-white transition-colors">Anti-Scam & Fraud Center</a></li>
+              <li><a href="{% url 'marketplace:static_page' 'prohibited-items' %}" class="hover:text-white transition-colors">Prohibited & Restricted Items</a></li>
+              <li><a href="{% url 'marketplace:static_page' 'community-guidelines' %}" class="hover:text-white transition-colors">Community Guidelines</a></li>
+            </ul>
+          </div>
+
+          <!-- Support & Contacts -->
+          <div class="space-y-3">
+            <h4 class="text-xs font-black text-white uppercase tracking-wider">Support Desk</h4>
+            <ul class="space-y-2 text-xs text-purple-200/70 font-medium">
+              <li><a href="mailto:{{ settings.support_email }}" class="hover:text-white transition-colors">Email: {{ settings.support_email }}</a></li>
+              <li><a href="tel:{{ settings.support_phone }}" class="hover:text-white transition-colors">Hotline: {{ settings.support_phone }}</a></li>
+              <li><a href="https://wa.me/{{ settings.support_whatsapp }}" target="_blank" class="hover:text-white transition-colors">WhatsApp Support Desk</a></li>
+              <li class="pt-1 text-[11px] text-purple-300">Office: {{ settings.office_address }}</li>
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- Regional Directory -->
+        <div class="py-6 border-b border-purple-400/20 text-[11px] text-purple-200/70 space-y-2">
+          <span class="font-extrabold text-white uppercase text-[10px] tracking-wider block">Popular Commercial Regions:</span>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <a href="?state=lagos" class="hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors">Lagos (Computer Village, Ikeja, Lekki, Alaba)</a>
+            <a href="?state=abuja" class="hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors">Abuja FCT (Wuse 2, Garki, Emab Plaza)</a>
+            <a href="?state=rivers" class="hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors">Port Harcourt (Garrison, GRA)</a>
+            <a href="?state=oyo" class="hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors">Ibadan (Dugbe, Bodija)</a>
+            <a href="?state=kano" class="hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors">Kano (Kano Municipal, Sabon Gari)</a>
+            <a href="?state=ogun" class="hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors">Ogun (Abeokuta, Ogba Border)</a>
+            <a href="?state=anambra" class="hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors">Onitsha (Main Market)</a>
+          </div>
+        </div>
+
+        <!-- Copyright -->
+        <div class="pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-purple-200/60 font-medium">
+          <p>&copy; 2026 {{ settings.site_name|default:"Naijamaket" }}. All rights reserved. Registered Nigerian Marketplace.</p>
+          <p class="text-[11px] text-purple-300/70 text-center md:text-right max-w-xl">
+            Naijamaket connects verified buyers and sellers in Nigeria. Always inspect items in-person in secure public locations. Never send advance payment fees.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================================= -->
+  <!-- 4. STICKY MOBILE BOTTOM NAVIGATION BAR                     -->
+  <!-- ========================================================= -->
+  <nav aria-label="Mobile Navigation" class="fixed bottom-0 left-0 right-0 sm:hidden bg-white/95 backdrop-blur-xl border-t border-slate-200 z-50 px-4 py-2 flex items-center justify-between shadow-2xl">
+    
+    <!-- Home -->
+    <a href="{% url 'marketplace:home' %}" class="flex flex-col items-center gap-1 text-purple-700">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span class="text-[10px] font-bold">Home</span>
+    </a>
+
+    <!-- Saved -->
+    <a href="{% url 'marketplace:saved_items' %}" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-900">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+      </svg>
+      <span class="text-[10px] font-bold">Saved</span>
+    </a>
+
+    <!-- Post Ad -->
+    <a href="{% url 'marketplace:post_ad' %}" class="flex flex-col items-center -mt-6">
+      <div class="w-12 h-12 rounded-full sell-btn-orange text-white flex items-center justify-center shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14"/><path d="M12 5v14"/>
+        </svg>
+      </div>
+      <span class="text-[10px] font-extrabold text-slate-700 mt-1">Post</span>
+    </a>
+
+    <!-- Chats -->
+    <a href="{% url 'marketplace:inbox' %}" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-900 relative">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span class="text-[10px] font-bold">Chats</span>
+      {% if unread_messages_count > 0 %}
+        <span class="absolute -top-1 right-2 bg-purple-600 text-white text-[8px] font-black rounded-full w-4 h-4 flex items-center justify-center">
+          {{ unread_messages_count }}
+        </span>
+      {% endif %}
+    </a>
+
+    <!-- Account / Login -->
+    {% if user.is_authenticated %}
+      <a href="{% url 'marketplace:dashboard' %}" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-900">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span class="text-[10px] font-bold">Account</span>
+      </a>
+    {% else %}
+      <a href="{% url 'marketplace:login' %}" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-900">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+        <span class="text-[10px] font-bold">Login</span>
+      </a>
+    {% endif %}
+  </nav>
+
+  <!-- Scripts: Language Switcher, Live Search, Dropdown Click-Out -->
+  <script>
+    const translations = {
+      'EN': {
+        title: "What are you looking for?",
+        placeholder: "I am looking for..."
+      },
+      'YOR': {
+        title: "Kí lo fẹ́ ra lónìí?",
+        placeholder: "Mo n wa..."
+      },
+      'IGB': {
+        title: "Kedu ihe ị na-achọ?",
+        placeholder: "Ana m achọ..."
+      },
+      'HAU': {
+        title: "Me kake nema yau?",
+        placeholder: "Ina neman..."
+      }
+    };
+
+    function changeLanguage(langCode) {
+      document.getElementById('currentLangLabel').innerText = langCode;
+      document.getElementById('langDropdown').classList.add('hidden');
+      
+      const item = translations[langCode];
+      if (item) {
+        document.getElementById('heroQuestionTitle').innerText = item.title;
+        document.getElementById('liveSearchInput').placeholder = item.placeholder;
+      }
+    }
+
+    const searchInput = document.getElementById('liveSearchInput');
+    const resultsContainer = document.getElementById('liveSearchResults');
+    let searchTimeout = null;
+
+    if (searchInput && resultsContainer) {
+      searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+
+        if (query.length < 2) {
+          resultsContainer.classList.add('hidden');
+          resultsContainer.innerHTML = '';
+          return;
+        }
+
+        searchTimeout = setTimeout(() => {
+          fetch(`/api/search/?q=${encodeURIComponent(query)}`)
+            .then(res => res.json())
+            .then(data => {
+              resultsContainer.innerHTML = '';
+              if (data.results && data.results.length > 0) {
+                data.results.forEach(item => {
+                  const row = document.createElement('a');
+                  row.href = `/item/${item.slug}/`;
+                  row.className = 'flex items-center gap-3 p-2.5 rounded-xl hover:bg-purple-50 transition-colors border-b border-slate-100 last:border-b-0';
+                  row.innerHTML = `
+                    <div class="w-10 h-10 rounded-lg bg-slate-100 overflow-hidden shrink-0">
+                      ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-400 text-xs">📦</div>`}
+                    </div>
+                    <div class="flex-1 truncate">
+                      <p class="text-xs font-bold text-slate-900 truncate">${item.title}</p>
+                      <span class="text-[11px] text-slate-400">${item.location}</span>
+                    </div>
+                    <span class="text-xs font-black text-purple-700">₦${item.price}</span>
+                  `;
+                  resultsContainer.appendChild(row);
+                });
+                resultsContainer.classList.remove('hidden');
+              } else {
+                resultsContainer.innerHTML = '<div class="p-4 text-center text-xs text-slate-400">No matching items found</div>';
+                resultsContainer.classList.remove('hidden');
+              }
+            });
+        }, 250);
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+          resultsContainer.classList.add('hidden');
+        }
+        const stateBtn = document.getElementById('stateDropdownBtn');
+        const stateMenu = document.getElementById('stateDropdownMenu');
+        if (stateBtn && stateMenu && !stateBtn.contains(e.target) && !stateMenu.contains(e.target)) {
+          stateMenu.classList.add('hidden');
+        }
+        const langDropdown = document.getElementById('langDropdown');
+        if (langDropdown && !langDropdown.contains(e.target) && !e.target.closest('button[onclick*="langDropdown"]')) {
+          langDropdown.classList.add('hidden');
+        }
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,428 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6D28D9">
+  <title>{{ listing.title }} - {{ settings.site_name|default:"Naijamaket" }}</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    body { 
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #F8F9FA;
+    }
+    .ultra-glass {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 10px 30px -10px rgba(109, 40, 217, 0.05);
+    }
+    .purple-gradient {
+      background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%);
+    }
+    .purple-glow {
+      box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.35);
+    }
+    .sell-btn-orange {
+      background-color: #FF8A00;
+      box-shadow: 0 4px 14px rgba(255, 138, 0, 0.35);
+    }
+    .sell-btn-orange:hover {
+      background-color: #EA7A00;
+    }
+  </style>
+</head>
+<body class="text-slate-900 antialiased min-h-screen flex flex-col pb-16 selection:bg-purple-600 selection:text-white">
+
+  <!-- ========================================================= -->
+  <!-- TOP WHITE HEADER BAR (MATCHES INDEX DESIGN)               -->
+  <!-- ========================================================= -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-22 flex items-center justify-between gap-3 sm:gap-6">
+      
+      <!-- Brand Logo (Prominent Standard Medium Display) -->
+      <a href="{% url 'marketplace:home' %}" class="flex items-center gap-2.5 group shrink-0 py-1">
+        {% if settings.logo %}
+          <img 
+            src="{{ settings.logo.url }}" 
+            alt="{{ settings.site_name }}" 
+            class="h-12 sm:h-16 w-auto max-w-[180px] sm:max-w-[260px] object-contain group-hover:scale-102 transition-transform duration-200"
+          >
+        {% else %}
+          <div class="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-purple-700 text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-md group-hover:scale-105 transition-transform">
+            {{ settings.site_name|slice:":1"|upper|default:"N" }}
+          </div>
+          <span class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+            {{ settings.site_name|default:"Naijamaket" }}
+          </span>
+        {% endif %}
+      </a>
+
+      <!-- Right Controls: Back Link & Sell Button -->
+      <div class="flex items-center gap-3 sm:gap-4">
+        <a href="{% url 'marketplace:home' %}" class="text-xs sm:text-sm font-bold text-slate-600 hover:text-purple-700 px-3 py-2 flex items-center gap-1 transition-colors">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Back to Marketplace</span>
+        </a>
+        <a 
+          href="{% url 'marketplace:post_ad' %}" 
+          class="sell-btn-orange text-white text-xs sm:text-sm font-black px-4 sm:px-8 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl uppercase tracking-wider transition-all hover:scale-105 active:scale-95 shrink-0"
+        >
+          SELL
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Banner -->
+  {% if messages %}
+    <div class="max-w-7xl mx-auto px-4 mt-4 w-full">
+      {% for message in messages %}
+        <div class="p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between border {% if message.tags == 'success' %}bg-purple-500/10 border-purple-500/20 text-purple-900{% else %}bg-rose-500/10 border-rose-500/20 text-rose-800{% endif %}">
+          <span>{{ message }}</span>
+          <button onclick="this.parentElement.remove()" class="text-slate-400">✕</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Main Showcase -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 flex-1 w-full">
+    
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-5 overflow-x-auto whitespace-nowrap">
+      <a href="{% url 'marketplace:home' %}" class="hover:text-purple-700">Home</a>
+      <span>/</span>
+      <span>{{ listing.category.name }}</span>
+      {% if listing.subcategory %}
+        <span>/</span>
+        <span>{{ listing.subcategory.name }}</span>
+      {% endif %}
+      <span>/</span>
+      <span class="text-slate-700 truncate max-w-[200px]">{{ listing.title }}</span>
+    </nav>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+      
+      <!-- Left Column: Gallery, Specs & Description (2 Cols) -->
+      <div class="lg:col-span-2 space-y-6">
+        
+        <!-- Multi-Photo Gallery Stage -->
+        <div class="bg-white rounded-3xl overflow-hidden p-3 shadow-sm border border-slate-200">
+          
+          <!-- Big Active Display Photo -->
+          <div class="relative w-full h-72 sm:h-[460px] bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center">
+            {% if listing.images.all %}
+              <img id="mainGalleryImage" src="{{ listing.images.first.image.url }}" alt="{{ listing.title }}" class="w-full h-full object-contain transition-all duration-300">
+            {% else %}
+              <div class="text-slate-500 flex flex-col items-center gap-2">
+                <i data-lucide="image" class="w-12 h-12"></i>
+                <span class="text-xs font-bold">No Photos Provided</span>
+              </div>
+            {% endif %}
+
+            <!-- Top Badges -->
+            <div class="absolute top-3 left-3 flex gap-2">
+              <span class="bg-slate-950/80 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1 rounded-full border border-white/10">
+                {{ listing.get_condition_display }}
+              </span>
+              {% if listing.status == 'sold' %}
+                <span class="bg-rose-600 text-white text-[11px] font-black px-3 py-1 rounded-full shadow-md">
+                  SOLD
+                </span>
+              {% elif listing.is_featured %}
+                <span class="purple-gradient text-white text-[11px] font-black px-3 py-1 rounded-full shadow-md">
+                  VIP FEATURED
+                </span>
+              {% endif %}
+            </div>
+
+            <!-- Save Bookmark Button -->
+            <a href="{% url 'marketplace:toggle_favorite' listing.id %}" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-md hover:scale-110 transition-transform">
+              <i data-lucide="heart" class="w-5 h-5 {% if is_favorited %}text-rose-600 fill-rose-600{% else %}text-slate-600{% endif %}"></i>
+            </a>
+          </div>
+
+          <!-- Clickable Mini Thumbnails Row -->
+          {% if listing.images.count > 1 %}
+          <div class="flex items-center gap-2.5 mt-3 overflow-x-auto p-1">
+            {% for img in listing.images.all %}
+              <button 
+                onclick="document.getElementById('mainGalleryImage').src='{{ img.image.url }}'; this.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('ring-2', 'ring-purple-600')); this.classList.add('ring-2', 'ring-purple-600')"
+                class="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200 focus:outline-hidden transition-all {% if forloop.first %}ring-2 ring-purple-600{% endif %}"
+              >
+                <img src="{{ img.image.url }}" alt="Thumbnail" class="w-full h-full object-cover">
+              </button>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+        </div>
+
+        <!-- RICH ITEM SPECIFICATIONS & ATTRIBUTES -->
+        <div class="bg-white rounded-3xl p-5 sm:p-7 shadow-sm border border-slate-200">
+          <h2 class="text-base font-black text-slate-900 mb-4 flex items-center gap-2">
+            <i data-lucide="cpu" class="w-5 h-5 text-purple-600"></i>
+            Item Specifications & Key Details
+          </h2>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Condition</span>
+              <span class="text-xs sm:text-sm font-extrabold text-slate-900 mt-0.5 block">{{ listing.get_condition_display }}</span>
+            </div>
+
+            <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Category</span>
+              <span class="text-xs sm:text-sm font-extrabold text-slate-900 mt-0.5 block">{{ listing.category.name }}</span>
+            </div>
+
+            <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Sub-Category</span>
+              <span class="text-xs sm:text-sm font-extrabold text-slate-900 mt-0.5 block">{{ listing.subcategory.name|default:"General" }}</span>
+            </div>
+
+            <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Location / Market</span>
+              <span class="text-xs sm:text-sm font-extrabold text-purple-700 mt-0.5 block truncate">{{ listing.area.name|default:listing.state.name }}</span>
+            </div>
+
+            <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Inspection Available</span>
+              <span class="text-xs sm:text-sm font-extrabold text-emerald-600 mt-0.5 block">Yes (In-Person)</span>
+            </div>
+
+            <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Seller Verified</span>
+              <span class="text-xs sm:text-sm font-extrabold text-blue-600 mt-0.5 block">
+                {% if listing.seller.seller_profile.is_nin_verified %}NIN Verified{% else %}Standard Merchant{% endif %}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description Box -->
+        <div class="bg-white rounded-3xl p-5 sm:p-7 shadow-sm border border-slate-200">
+          <h2 class="text-base font-black text-slate-900 mb-3 flex items-center gap-2">
+            <i data-lucide="file-text" class="w-5 h-5 text-purple-600"></i>
+            Full Product Description
+          </h2>
+          <div class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">
+            {{ listing.description }}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Price & Verified Merchant Controls (1 Col) -->
+      <div class="space-y-6">
+        
+        <!-- Price & Action Card -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Asking Price</p>
+          <p class="text-3xl sm:text-4xl font-black text-slate-900 mb-4">₦{{ listing.price|intcomma }}</p>
+
+          <div class="space-y-2.5 pb-5 border-b border-slate-100 text-xs font-semibold text-slate-600">
+            <div class="flex items-center gap-2">
+              <i data-lucide="map-pin" class="w-4 h-4 text-purple-600"></i>
+              <span>{{ listing.area.name|default:listing.state.name }}, {{ listing.state.name }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="clock" class="w-4 h-4 text-purple-600"></i>
+              <span>Posted {{ listing.created_at|naturaltime }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <i data-lucide="eye" class="w-4 h-4 text-purple-600"></i>
+              <span>{{ listing.views_count }} views</span>
+            </div>
+          </div>
+
+          <!-- Contact Buttons -->
+          <div class="pt-5 space-y-3">
+            
+            <!-- WhatsApp Button -->
+            <a 
+              href="https://wa.me/{{ listing.seller.seller_profile.whatsapp_number|default:listing.seller.seller_profile.phone_number }}?text=Hello%20{{ listing.seller.username }},%20I%20saw%20your%20listing%20'{{ listing.title }}'%20on%20{{ settings.site_name }}." 
+              target="_blank" 
+              class="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-md transition-all"
+            >
+              <i data-lucide="message-circle" class="w-5 h-5"></i>
+              <span>Chat with Seller on WhatsApp</span>
+            </a>
+
+            <!-- In-App Chat -->
+            <a 
+              href="{% url 'marketplace:start_chat' listing.id %}" 
+              class="w-full flex items-center justify-center gap-2 purple-gradient text-white font-extrabold text-sm py-3.5 rounded-2xl purple-glow shadow-md transition-all"
+            >
+              <i data-lucide="messages-square" class="w-5 h-5"></i>
+              <span>Direct In-App Message</span>
+            </a>
+
+            <!-- Call Line -->
+            <a 
+              href="tel:{{ listing.seller.seller_profile.phone_number }}" 
+              class="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-3 rounded-xl transition-all"
+            >
+              <i data-lucide="phone" class="w-4 h-4 text-slate-500"></i>
+              <span>Call: {{ listing.seller.seller_profile.phone_number }}</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Merchant Profile Card With Verified Badge, Shop Address & Social Links -->
+        <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-5">
+          <div class="flex items-center gap-4">
+            
+            <div class="w-14 h-14 rounded-full overflow-hidden bg-slate-100 shrink-0 border-2 border-purple-200 shadow-xs flex items-center justify-center">
+              {% if listing.seller.seller_profile.avatar %}
+                <img src="{{ listing.seller.seller_profile.avatar.url }}" alt="{{ listing.seller.username }}" class="w-full h-full object-cover">
+              {% else %}
+                <div class="w-full h-full purple-gradient flex items-center justify-center text-white font-black text-xl">
+                  {{ listing.seller.username|slice:":1"|upper }}
+                </div>
+              {% endif %}
+            </div>
+
+            <div>
+              <div class="flex items-center gap-1.5">
+                <h3 class="font-black text-slate-900 text-base">{{ listing.seller.username }}</h3>
+                
+                {% if listing.seller.seller_profile.is_nin_verified %}
+                  <span title="NIN Verified Merchant" class="inline-flex items-center">
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path fill-rule="evenodd" clip-rule="evenodd" d="M7.06383 0.985077C7.33981 0.772642 7.66986 0.666667 7.99984 0.666748C8.32981 0.666667 8.65986 0.772642 8.93585 0.985077L9.71826 1.58584L10.6988 1.45682C11.3888 1.36588 12.0527 1.75039 12.3189 2.39207L12.6956 3.30452L13.6066 3.68068L13.6079 3.68122C14.2496 3.94745 14.634 4.61164 14.5431 5.30164L14.4142 6.28134L15.0153 7.06426C15.1741 7.27109 15.2735 7.50843 15.3133 7.7534C15.3423 7.93203 15.3396 8.11472 15.3051 8.29262C15.2608 8.5213 15.1642 8.742 15.0153 8.93591L14.4142 9.71883L14.5431 10.6985C14.634 11.3885 14.2496 12.0527 13.6079 12.3189L13.6066 12.3195L12.6956 12.6956L12.3189 13.6081C12.0527 14.2498 11.3888 14.6343 10.6988 14.5433L9.71826 14.4143L8.93585 15.0151C8.65986 15.2275 8.32981 15.3335 7.99984 15.3334C7.66986 15.3335 7.33981 15.2275 7.06383 15.0151L6.28141 14.4143L5.30087 14.5433C4.61083 14.6343 3.94699 14.2498 3.6808 13.6081L3.30412 12.6956L2.39303 12.3195L2.39173 12.3189C1.75005 12.0527 1.36565 11.3885 1.45657 10.6985L1.58547 9.71883L0.984385 8.93591C0.811485 8.71075 0.709028 8.44947 0.677232 8.18153C0.631114 7.79303 0.733722 7.39067 0.984385 7.06426L1.58547 6.28134L1.45657 5.30164C1.36565 4.61164 1.75005 3.94745 2.39173 3.68122L2.39303 3.68068L3.30412 3.30452L3.6808 2.39207C3.94699 1.75039 4.61083 1.36588 5.30087 1.45682L6.28141 1.58584L7.06383 0.985077ZM10.8046 6.80482C11.0649 6.54447 11.0649 6.12236 10.8046 5.86201C10.5442 5.60166 10.1221 5.60166 9.86177 5.86201L7.33317 8.39061L6.47124 7.52868C6.21089 7.26833 5.78878 7.26833 5.52843 7.52868C5.26808 7.78903 5.26808 8.21114 5.52843 8.47149L6.86177 9.80482C7.12212 10.0652 7.54423 10.0652 7.80458 9.80482L10.8046 6.80482Z" fill="#1B65FF"/>
+                      <path d="M6 7.99992L7.33333 9.33325L10.3333 6.33325" stroke="white" stroke-width="1.33" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </span>
+                {% endif %}
+
+                {% if listing.seller.seller_profile.is_cac_verified %}
+                  <span class="bg-amber-100 text-amber-800 text-[9px] font-black px-2 py-0.5 rounded-md border border-amber-300">CAC</span>
+                {% endif %}
+              </div>
+              <p class="text-xs text-slate-400">{{ listing.seller.seller_profile.response_time|default:"Replies quickly" }}</p>
+            </div>
+          </div>
+
+          <!-- PHYSICAL STORE ADDRESS -->
+          <div class="bg-purple-50 p-3.5 rounded-2xl border border-purple-200 text-xs space-y-1">
+            <div class="flex items-center gap-1.5 font-bold text-purple-900">
+              <i data-lucide="store" class="w-4 h-4 text-purple-700 shrink-0"></i>
+              <span>Physical Shop / Office Address</span>
+            </div>
+            <p class="text-slate-700 pl-5 font-medium">
+              {{ listing.seller.seller_profile.shop_address|default:"Physical store address available upon meeting inquiry in this commercial district." }}
+            </p>
+          </div>
+
+          <!-- SOCIAL MEDIA CONNECT ICONS -->
+          <div class="pt-2">
+            <span class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2.5">
+              Connect Directly with Seller
+            </span>
+            <div class="flex items-center gap-2">
+              
+              <!-- WhatsApp -->
+              <a 
+                href="https://wa.me/{{ listing.seller.seller_profile.whatsapp_number|default:listing.seller.seller_profile.phone_number }}" 
+                target="_blank" 
+                class="w-10 h-10 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center justify-center transition-transform hover:scale-110 shadow-xs"
+                title="WhatsApp"
+              >
+                <i data-lucide="message-circle" class="w-5 h-5"></i>
+              </a>
+
+              <!-- Instagram -->
+              {% if listing.seller.seller_profile.instagram_handle %}
+                <a 
+                  href="https://instagram.com/{{ listing.seller.seller_profile.instagram_handle }}" 
+                  target="_blank" 
+                  class="w-10 h-10 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200 flex items-center justify-center transition-transform hover:scale-110 shadow-xs"
+                  title="Instagram"
+                >
+                  <i data-lucide="instagram" class="w-5 h-5"></i>
+                </a>
+              {% endif %}
+
+              <!-- Facebook -->
+              {% if listing.seller.seller_profile.facebook_handle %}
+                <a 
+                  href="https://facebook.com/{{ listing.seller.seller_profile.facebook_handle }}" 
+                  target="_blank" 
+                  class="w-10 h-10 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 flex items-center justify-center transition-transform hover:scale-110 shadow-xs"
+                  title="Facebook"
+                >
+                  <i data-lucide="facebook" class="w-5 h-5"></i>
+                </a>
+              {% endif %}
+
+              <!-- TikTok -->
+              {% if listing.seller.seller_profile.tiktok_handle %}
+                <a 
+                  href="https://tiktok.com/@{{ listing.seller.seller_profile.tiktok_handle }}" 
+                  target="_blank" 
+                  class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center transition-transform hover:scale-110 shadow-xs"
+                  title="TikTok"
+                >
+                  <i data-lucide="video" class="w-5 h-5"></i>
+                </a>
+              {% endif %}
+
+              <!-- Call Phone -->
+              <a 
+                href="tel:{{ listing.seller.seller_profile.phone_number }}" 
+                class="w-10 h-10 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center transition-transform hover:scale-110 shadow-xs"
+                title="Direct Phone Call"
+              >
+                <i data-lucide="phone-call" class="w-5 h-5"></i>
+              </a>
+
+            </div>
+          </div>
+
+          <!-- Safety Warning -->
+          <div class="bg-amber-50 rounded-2xl p-4 border border-amber-200 text-amber-950 text-xs space-y-1">
+            <div class="flex items-center gap-1.5 font-bold text-amber-800">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-amber-600"></i>
+              <span>Safety Warning</span>
+            </div>
+            <p class="leading-relaxed text-[11px]">
+              Inspect items thoroughly before releasing money. Never transfer advance dispatch fees.
+            </p>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 mt-auto py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500 font-medium">
+      <div class="flex items-center gap-2.5">
+        {% if settings.logo %}
+          <img src="{{ settings.logo.url }}" alt="{{ settings.site_name }}" class="h-7 w-auto object-contain">
+        {% else %}
+          <div class="w-6 h-6 rounded-lg bg-purple-700 flex items-center justify-center text-white font-black text-xs">N</div>
+        {% endif %}
+        <span>&copy; 2026 {{ settings.site_name|default:"Naijamaket" }}. Verified Nigerian Classifieds.</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span>Support: <strong class="text-slate-700">{{ settings.support_phone|default:"0800-NAIJA-MK" }}</strong></span>
+      </div>
+    </div>
+  </footer>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

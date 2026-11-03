@@ -1,0 +1,89 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6D28D9">
+  <title>{{ page.title }} - {{ settings.site_name|default:"Naijamaket" }}</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <style>
+    body { 
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #F8F9FA;
+    }
+    .footer-purple-bg {
+      background: linear-gradient(180deg, #4C1D95 0%, #2E1065 100%);
+    }
+    .sell-btn-orange {
+      background-color: #FF8A00;
+      box-shadow: 0 4px 14px rgba(255, 138, 0, 0.35);
+    }
+  </style>
+</head>
+<body class="text-slate-900 antialiased min-h-screen flex flex-col justify-between selection:bg-purple-600 selection:text-white">
+
+  <!-- Top Header Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-20 flex items-center justify-between gap-3">
+      <a href="{% url 'marketplace:home' %}" class="flex items-center gap-2.5 shrink-0">
+        {% if settings.logo %}
+          <img src="{{ settings.logo.url }}" alt="{{ settings.site_name }}" class="h-10 sm:h-12 w-auto object-contain">
+        {% else %}
+          <div class="w-10 h-10 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-xl shadow-md">
+            {{ settings.site_name|slice:":1"|upper|default:"N" }}
+          </div>
+          <span class="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+            {{ settings.site_name|default:"Naijamaket" }}
+          </span>
+        {% endif %}
+      </a>
+
+      <div class="flex items-center gap-4">
+        <a href="{% url 'marketplace:home' %}" class="text-xs sm:text-sm font-bold text-slate-600 hover:text-purple-700 flex items-center gap-1 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+          <span>Back to Market</span>
+        </a>
+        <a href="{% url 'marketplace:post_ad' %}" class="sell-btn-orange text-white text-xs font-black px-4 py-2 sm:py-2.5 rounded-xl uppercase tracking-wider">
+          SELL
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Content Container -->
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-14 w-full flex-1">
+    <div class="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/90 shadow-sm space-y-6">
+      
+      <div class="border-b border-slate-100 pb-5">
+        <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ page.title }}</h1>
+        <p class="text-xs text-slate-400 mt-1 font-semibold">Last updated: {{ page.updated_at|date:"F d, Y" }}</p>
+      </div>
+
+      <!-- Render Article / Policy Text -->
+      <div class="text-slate-700 text-sm sm:text-base leading-relaxed space-y-4 whitespace-pre-line">
+        {{ page.content|linebreaks }}
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Compact Purple Footer for Policy Pages -->
+  <footer class="footer-purple-bg text-white py-8 border-t border-purple-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-purple-200/70 font-medium">
+      <p>&copy; 2026 {{ settings.site_name|default:"Naijamaket" }}. All rights reserved.</p>
+      <div class="flex items-center gap-4 text-xs">
+        <a href="{% url 'marketplace:home' %}" class="hover:text-white">Home</a>
+        <span>•</span>
+        <a href="mailto:{{ settings.support_email }}" class="hover:text-white">{{ settings.support_email }}</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
