@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.contrib.auth import logout
 from django.utils import timezone
 from django.db.models import Q
 from .models import Listing, SellerProfile, ReportedListing, StaffActivityLog
@@ -110,3 +111,10 @@ def ad_action(request, listing_id):
         messages.warning(request, f"Ad '{ad.title}' rejected.")
 
     return redirect('workspace:ad_queue')
+
+
+def staff_logout_view(request):
+    """Safely logs out the staff member and redirects back to the login screen"""
+    logout(request)
+    messages.info(request, "You have been logged out successfully.")
+    return redirect('/admin/login/')
