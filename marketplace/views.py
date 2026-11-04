@@ -92,10 +92,12 @@ def index_view(request):
     user_saved_ids = []
     unread_messages_count = 0
     if request.user.is_authenticated:
-        current_profile, _ = SellerProfile.objects.get_or_create(
-            user=request.user,
-            defaults={'phone_number': '08000000000'}
-        )
+        # Prevent staff from having an auto-created SellerProfile
+        if not (request.user.is_staff or request.user.is_superuser):
+            current_profile, _ = SellerProfile.objects.get_or_create(
+                user=request.user,
+                defaults={'phone_number': '08000000000'}
+            )
         user_saved_ids = list(Favorite.objects.filter(user=request.user).values_list('listing_id', flat=True))
         unread_messages_count = Message.objects.filter(
             Q(conversation__buyer=request.user) | Q(conversation__seller=request.user),
@@ -183,6 +185,11 @@ def saved_items_view(request):
 
 @login_required(login_url='marketplace:login')
 def dashboard_view(request):
+    # Enforce separation: staff cannot use public seller dashboard
+    if request.user.is_staff or request.user.is_superuser:
+        messages.warning(request, "Staff accounts must use the Staff Workspace.")
+        return redirect('workspace:dashboard')
+
     user_listings = Listing.objects.filter(seller=request.user).order_by('-created_at')
     active_count = user_listings.filter(status='active').count()
     sold_count = user_listings.filter(status='sold').count()
@@ -297,6 +304,11 @@ def report_ad_view(request, listing_id):
 
 @login_required(login_url='marketplace:login')
 def post_ad_view(request):
+    # Enforce separation: staff cannot post listings as sellers
+    if request.user.is_staff or request.user.is_superuser:
+        messages.warning(request, "Staff accounts cannot post marketplace ads.")
+        return redirect('workspace:dashboard')
+
     if request.method == 'POST':
         form = ListingForm(request.POST)
         files = request.FILES.getlist('images')
@@ -359,6 +371,8 @@ def register_view(request):
 
 def login_view(request):
     if request.user.is_authenticated:
+        if request.user.is_staff or request.user.is_superuser:
+            return redirect('workspace:dashboard')
         return redirect('marketplace:home')
 
     error_message = None
@@ -375,6 +389,11 @@ def login_view(request):
                 user = None
 
         if user:
+            # Block staff from public seller login
+            if user.is_staff or user.is_superuser:
+                messages.warning(request, "Staff accounts must use the Staff Workspace to log in.")
+                return redirect('workspace:dashboard')
+
             login(request, user)
             messages.success(request, f"Welcome back, {user.first_name or user.username}!")
             next_url = request.GET.get('next', 'marketplace:home')
@@ -393,6 +412,11 @@ def logout_view(request):
 
 @login_required(login_url='marketplace:login')
 def profile_view(request):
+    # Enforce separation: staff accounts do not manage public seller profiles
+    if request.user.is_staff or request.user.is_superuser:
+        messages.warning(request, "Staff accounts cannot access seller profiles.")
+        return redirect('workspace:dashboard')
+
     profile, _ = SellerProfile.objects.get_or_create(
         user=request.user,
         defaults={'phone_number': '08000000000'}
