@@ -14,16 +14,27 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-9xps_@o)+#=h7$9lnn^b_
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-# Allow all hosts or read from environment variable for Coolify domain
+# Allow all hosts
 ALLOWED_HOSTS = ['*']
 
 # CSRF trusted origins for Coolify domain proxies
 CSRF_TRUSTED_ORIGINS = [
     'http://*.sslip.io',
     'https://*.sslip.io',
+    'http://olhbbbatpfblic7yhycinpvh.199.247.22.119.sslip.io',
+    'https://olhbbbatpfblic7yhycinpvh.199.247.22.119.sslip.io',
     'http://localhost',
     'http://127.0.0.1',
 ]
+
+# Reverse proxy support (Coolify / Traefik)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
+# Prevent cookie rejection on mixed HTTP/HTTPS connections
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
 
 # Application definition
 INSTALLED_APPS = [
@@ -71,7 +82,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 # Database
-# Auto-create the data folder so SQLite never throws "unable to open database file"
 DATA_DIR = BASE_DIR / 'data'
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -112,8 +122,12 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files (User uploaded photos for listings)
+# Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Staff Workspace & Authentication Routing
+LOGIN_REDIRECT_URL = '/workspace/routing/'
+LOGIN_URL = '/admin/login/'
