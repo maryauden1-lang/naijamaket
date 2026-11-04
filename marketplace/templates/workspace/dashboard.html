@@ -5,56 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Naijamaket Staff Operations</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans">
   <nav class="bg-purple-900 text-white px-6 py-4 flex justify-between items-center shadow-md">
     <div class="flex items-center space-x-3">
       <span class="text-xl font-black tracking-wide text-yellow-400">Naijamaket</span>
-      <span class="bg-purple-800 text-xs px-2.5 py-1 rounded-full uppercase tracking-wider font-semibold">Staff Workspace</span>
+      <span class="bg-purple-800 text-xs px-2.5 py-1 rounded-full uppercase tracking-wider font-semibold">
+        {% if is_ceo %}CEO Workspace{% else %}Staff Workspace{% endif %}
+      </span>
     </div>
     <div class="flex items-center space-x-4 text-sm">
-      <span>Logged in as: <strong>{{ request.user.username }}</strong></span>
-      <form method="post" action="{% url 'admin:logout' %}" class="inline">
-        {% csrf_token %}
-        <button type="submit" class="bg-purple-800 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded-lg border border-purple-600 transition cursor-pointer">
-          Logout
-        </button>
-      </form>
+      <span>Logged in as: <strong>{{ request.user.username }}</strong> {% if is_ceo %}(CEO){% endif %}</span>
+      <a href="{% url 'workspace:logout' %}" class="bg-purple-800 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded-lg border border-purple-600 transition cursor-pointer">
+        Logout
+      </a>
     </div>
   </nav>
 
   <main class="max-w-6xl mx-auto px-6 py-8">
     {% if messages %}
       {% for message in messages %}
-        <div class="mb-6 p-4 rounded-lg text-sm font-medium {% if message.tags == 'success' %}bg-green-100 text-green-800 border border-green-200{% else %}bg-yellow-100 text-yellow-800 border border-yellow-200{% endif %}">
+        <div class="mb-6 p-4 rounded-lg text-sm font-medium {% if message.tags == 'success' %}bg-green-100 text-green-800 border border-green-200{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-800 border border-yellow-200{% else %}bg-rose-100 text-rose-800 border border-rose-200{% endif %}">
           {{ message }}
         </div>
       {% endfor %}
     {% endif %}
 
-    <h1 class="text-2xl font-bold text-gray-800 mb-6">Operations Center</h1>
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Operations Center</h1>
+      {% if is_ceo %}
+        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full border border-blue-200">
+          Executive Superuser Privileges
+        </span>
+      {% endif %}
+    </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      
       <!-- Card 1: Listing Review Queue -->
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h2 class="text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">Listing Review Queue</h2>
-        <div class="text-3xl font-extrabold text-purple-700 mb-4">{{ pending_listings_count }} <span class="text-sm font-normal text-gray-500">pending</span></div>
-        <a href="{% url 'workspace:ad_queue' %}" class="block text-center w-full bg-purple-700 hover:bg-purple-800 text-white font-semibold py-2.5 rounded-lg transition">Open Ad Queue &rarr;</a>
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+        <div>
+          <h2 class="text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">Listing Review Queue</h2>
+          <div class="text-3xl font-extrabold text-purple-700 mb-4">{{ pending_listings_count }} <span class="text-sm font-normal text-gray-500">pending</span></div>
+        </div>
+        <a href="{% url 'workspace:ad_queue' %}" class="block text-center w-full bg-purple-700 hover:bg-purple-800 text-white font-semibold py-2.5 rounded-lg transition shadow-xs">
+          Open Ad Queue &rarr;
+        </a>
       </div>
 
-      <!-- Card 2: KYC & NIN Verifications -->
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h2 class="text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">ID & KYC Verification</h2>
-        <div class="text-3xl font-extrabold text-blue-700 mb-4">{{ pending_kyc_count }} <span class="text-sm font-normal text-gray-500">submitted</span></div>
-        <button disabled class="w-full bg-gray-200 text-gray-500 font-semibold py-2.5 rounded-lg cursor-not-allowed">KYC Queue (Active)</button>
+      <!-- Card 2: KYC & NIN Verifications (CEO Exclusive) -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm uppercase tracking-wider text-gray-500 font-bold">ID & KYC Verification</h2>
+            <span class="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-2 py-0.5 rounded-full">CEO ONLY</span>
+          </div>
+          <div class="text-3xl font-extrabold text-blue-700 mb-4">{{ pending_kyc_count }} <span class="text-sm font-normal text-gray-500">submitted</span></div>
+        </div>
+        {% if is_ceo %}
+          <a href="{% url 'workspace:kyc_list' %}" class="block text-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition shadow-xs">
+            Open CEO KYC Desk &rarr;
+          </a>
+        {% else %}
+          <button disabled class="w-full bg-gray-100 text-gray-400 font-semibold py-2.5 rounded-lg cursor-not-allowed text-xs">
+            Restricted to CEO Review
+          </button>
+        {% endif %}
       </div>
 
       <!-- Card 3: Disputes & Reports -->
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h2 class="text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">Disputes & Reports</h2>
-        <div class="text-3xl font-extrabold text-red-600 mb-4">{{ open_reports_count }} <span class="text-sm font-normal text-gray-500">unresolved</span></div>
-        <button disabled class="w-full bg-gray-200 text-gray-500 font-semibold py-2.5 rounded-lg cursor-not-allowed">Disputes Queue</button>
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+        <div>
+          <h2 class="text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">Disputes & Reports</h2>
+          <div class="text-3xl font-extrabold text-red-600 mb-4">{{ open_reports_count }} <span class="text-sm font-normal text-gray-500">unresolved</span></div>
+        </div>
+        <button disabled class="w-full bg-gray-100 text-gray-400 font-semibold py-2.5 rounded-lg cursor-not-allowed text-xs">
+          Disputes Queue (Active)
+        </button>
       </div>
+
     </div>
 
     <!-- Staff Activity Log Section -->
@@ -88,5 +118,7 @@
       </div>
     </div>
   </main>
+
+  <script>lucide.createIcons();</script>
 </body>
 </html>
