@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Naijamaket Staff Operations</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+  <nav class="bg-purple-900 text-white px-6 py-4 flex justify-between items-center shadow-md">
+    <div class="flex items-center space-x-3">
+      <span class="text-xl font-black tracking-wide text-yellow-400">Naijamaket</span>
+      <span class="bg-purple-800 text-xs px-2.5 py-1 rounded-full uppercase tracking-wider font-semibold">Staff Workspace</span>
+    </div>
+    <div class="flex items-center space-x-4 text-sm">
+      <span>Logged in as: <strong>{{ request.user.username }}</strong></span>
+      <a href="/admin/logout/" class="text-gray-300 hover:text-white underline">Logout</a>
+    </div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-6 py-8">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="mb-6 p-4 rounded-lg text-sm font-medium {% if message.tags == 'success' %}bg-green-100 text-green-800 border border-green-200{% else %}bg-yellow-100 text-yellow-800 border border-yellow-200{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <h1 class="text-2xl font-bold text-gray-800 mb-6">Operations Center</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      <!-- Listing Review Queue -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h2 class="text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">Listing Review Queue</h2>
+        <div class="text-3xl font-extrabold text-purple-700 mb-4">{{ pending_listings_count }} <span class="text-sm font-normal text-gray-500">pending</span></div>
+        <a href="{% url 'workspace:ad_queue' %}" class="block text-center w-full bg-purple-700 hover:bg-purple-800 text-white font-semibold py-2.5 rounded-lg transition">Open Ad Queue &rarr;</a>
+      </div>
+
+      <!-- KYC & Verifications -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h2 class="text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">ID & KYC Verification</h2>
+        <div class="text-3xl font-extrabold text-blue-700 mb-4">{{ pending_kyc_count }} <span class="text-sm font-normal text-gray-500">submitted</span></div>
+        <button disabled class="w-full bg-gray-200 text-gray-500 font-semibold py-2.5 rounded-lg cursor-not-allowed">KYC Queue (Active)</button>
+      </div>
+
+      <!-- Disputes & Reports -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h2 class="text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">Disputes & Reports</h2>
+        <div class="text-3xl font-extrabold text-red-600 mb-4">{{ open_reports_count }} <span class="text-sm font-normal text-gray-500">unresolved</span></div>
+        <button disabled class="w-full bg-gray-200 text-gray-500 font-semibold py-2.5 rounded-lg cursor-not-allowed">Disputes Queue</button>
+      </div>
+    </div>
+
+    <!-- Audited Activity Log -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">Your Recent Actions (Audited)</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-gray-600">
+          <thead class="bg-gray-50 text-gray-500 uppercase text-xs font-semibold">
+            <tr>
+              <th class="py-3 px-4">Time</th>
+              <th class="py-3 px-4">Action</th>
+              <th class="py-3 px-4">Target Item</th>
+              <th class="py-3 px-4">Details</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            {% for log in recent_my_actions %}
+              <tr>
+                <td class="py-3 px-4 whitespace-nowrap">{{ log.timestamp|date:"M d, H:i" }}</td>
+                <td class="py-3 px-4"><span class="px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-700">{{ log.get_action_display }}</span></td>
+                <td class="py-3 px-4 font-medium text-gray-900">{{ log.target_object_id }}</td>
+                <td class="py-3 px-4 text-xs text-gray-500">{{ log.details }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4" class="py-6 text-center text-gray-400">No actions recorded today.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

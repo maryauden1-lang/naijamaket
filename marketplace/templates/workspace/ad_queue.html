@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ad Review Queue - Naijamaket</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <header class="bg-purple-900 text-white px-6 py-3 flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <a href="{% url 'workspace:dashboard' %}" class="text-yellow-400 font-bold hover:underline">&larr; Workspace Dashboard</a>
+      <span class="text-purple-300">|</span>
+      <span class="text-sm">Queue Count: <strong>{{ remaining_pending }}</strong></span>
+    </div>
+    <span class="text-xs bg-purple-800 px-3 py-1 rounded text-purple-200">Session Locked (10 mins)</span>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-6 py-8">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="mb-4 p-4 rounded-lg text-sm font-semibold {% if message.tags == 'success' %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% if ad %}
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden grid grid-cols-1 md:grid-cols-3">
+        <!-- Listing Photos Column -->
+        <div class="p-6 bg-gray-50 border-r border-gray-200">
+          <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Uploaded Images</h3>
+          <div class="space-y-4">
+            {% for img in ad.images.all %}
+              <div class="border rounded-lg overflow-hidden bg-white">
+                <img src="{{ img.image.url }}" alt="{{ ad.title }}" class="w-full h-48 object-cover">
+                {% if img.is_cover %}<span class="block text-center text-xs bg-purple-100 text-purple-700 font-bold py-1">Cover Image</span>{% endif %}
+              </div>
+            {% empty %}
+              <div class="text-center py-10 text-gray-400 border border-dashed rounded-lg">No additional images</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Ad Details & Action Form -->
+        <div class="p-6 md:col-span-2 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold bg-gray-100 text-gray-700 px-2 py-1 rounded">{{ ad.category.name }} &gt; {{ ad.subcategory.name|default:"General" }}</span>
+              <span class="text-xs text-gray-400">Posted {{ ad.created_at|timesince }} ago</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ ad.title }}</h1>
+            <div class="text-xl font-extrabold text-green-600 mb-4">&#8358;{{ ad.price }}</div>
+
+            <div class="bg-gray-50 p-4 rounded-lg mb-6 border text-sm text-gray-700 whitespace-pre-line">
+              <h4 class="text-xs font-bold text-gray-400 uppercase mb-1">Description:</h4>
+              {{ ad.description }}
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-xs text-gray-600 mb-6 bg-purple-50 p-3 rounded">
+              <div><strong>Seller:</strong> {{ ad.seller.username }}</div>
+              <div><strong>Location:</strong> {{ ad.area.name }}, {{ ad.state.name }}</div>
+              <div><strong>Condition:</strong> {{ ad.get_condition_display }}</div>
+              <div><strong>Seller Phone:</strong> {{ ad.seller.seller_profile.phone_number }}</div>
+            </div>
+          </div>
+
+          <!-- Decision Form -->
+          <div class="border-t pt-6">
+            <form method="POST" action="{% url 'workspace:ad_action' ad.id %}" class="space-y-4">
+              {% csrf_token %}
+              <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Standard Rejection Reasons (Required if Rejecting)</label>
+                <select name="rejection_reason" class="w-full border rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white">
+                  <option value="">-- Choose reason if rejecting --</option>
+                  <option value="Poor/Blurry photo or watermarked image">Poor/Blurry photo or watermarked image</option>
+                  <option value="Unrealistic or misleading price">Unrealistic or misleading price</option>
+                  <option value="Prohibited or counterfeit item">Prohibited or counterfeit item</option>
+                  <option value="Incomplete or unclear description">Incomplete or unclear description</option>
+                  <option value="Duplicate listing detected">Duplicate listing detected</option>
+                </select>
+              </div>
+
+              <div class="flex space-x-4">
+                <button type="submit" name="decision" value="approve" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow transition">
+                  &#10003; Approve Ad
+                </button>
+                <button type="submit" name="decision" value="reject" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow transition">
+                  &#10005; Reject Ad
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="text-center py-16 bg-white rounded-xl shadow-sm border border-gray-200">
+        <h2 class="text-xl font-bold text-gray-800 mb-2">No Ads Waiting for Review</h2>
+        <p class="text-gray-500 text-sm mb-6">All newly submitted listings have been reviewed.</p>
+        <a href="{% url 'workspace:dashboard' %}" class="bg-purple-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-purple-800">Return to Operations</a>
+      </div>
+    {% endif %}
+  </main>
+</body>
+</html>

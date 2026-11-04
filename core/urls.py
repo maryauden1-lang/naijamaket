@@ -6,6 +6,7 @@ from django.views.static import serve
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('workspace/', include('marketplace.workspace_urls')),
     path('', include('marketplace.urls')),
 ]
 
