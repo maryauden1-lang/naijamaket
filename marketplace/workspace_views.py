@@ -114,7 +114,7 @@ def ad_action(request, listing_id):
 
 
 def staff_logout_view(request):
-    """Safely logs out the staff member and sends them to login with workspace target"""
+    """Safely logs out the staff member and sends them to the workspace login"""
     logout(request)
     messages.info(request, "You have been logged out successfully.")
     return redirect('/admin/login/?next=/workspace/')
@@ -128,11 +128,13 @@ def smart_login_redirect(request):
     - Normal buyers/sellers go to home
     """
     if not request.user.is_authenticated:
-        return redirect('/admin/login/')
+        return redirect('/admin/login/?next=/workspace/')
 
+    # CEO stays in root admin
     if request.user.is_superuser:
         return redirect('/admin/')
 
+    # Operational staff are forced directly into the workspace
     if request.user.is_staff:
         return redirect('workspace:dashboard')
 
