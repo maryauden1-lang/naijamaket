@@ -114,7 +114,26 @@ def ad_action(request, listing_id):
 
 
 def staff_logout_view(request):
-    """Safely logs out the staff member and redirects back to the login screen"""
+    """Safely logs out the staff member and sends them to login with workspace target"""
     logout(request)
     messages.info(request, "You have been logged out successfully.")
-    return redirect('/admin/login/')
+    return redirect('/admin/login/?next=/workspace/')
+
+
+def smart_login_redirect(request):
+    """
+    Intelligent router after login:
+    - Non-superusers with staff profiles go straight to /workspace/
+    - Superusers go to /admin/
+    - Normal buyers/sellers go to home
+    """
+    if not request.user.is_authenticated:
+        return redirect('/admin/login/')
+
+    if request.user.is_superuser:
+        return redirect('/admin/')
+
+    if request.user.is_staff:
+        return redirect('workspace:dashboard')
+
+    return redirect('/')
