@@ -54,24 +54,18 @@
         </a>
       </div>
 
-      <!-- Card 2: KYC & NIN Verifications (CEO Exclusive) -->
+      <!-- Card 2: KYC & NIN Verifications (Unlocked for CEO & Verification Desk) -->
       <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
         <div>
           <div class="flex items-center justify-between mb-2">
             <h2 class="text-sm uppercase tracking-wider text-gray-500 font-bold">ID & KYC Verification</h2>
-            <span class="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-2 py-0.5 rounded-full">CEO ONLY</span>
+            <span class="text-[10px] bg-blue-100 text-blue-800 font-extrabold px-2 py-0.5 rounded-full">KYC DESK</span>
           </div>
           <div class="text-3xl font-extrabold text-blue-700 mb-4">{{ pending_kyc_count }} <span class="text-sm font-normal text-gray-500">submitted</span></div>
         </div>
-        {% if is_ceo %}
-          <a href="{% url 'workspace:kyc_list' %}" class="block text-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition shadow-xs">
-            Open CEO KYC Desk &rarr;
-          </a>
-        {% else %}
-          <button disabled class="w-full bg-gray-100 text-gray-400 font-semibold py-2.5 rounded-lg cursor-not-allowed text-xs">
-            Restricted to CEO Review
-          </button>
-        {% endif %}
+        <a href="{% url 'workspace:kyc_list' %}" class="block text-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition shadow-xs">
+          Open Verification Desk &rarr;
+        </a>
       </div>
 
       <!-- Card 3: Disputes & Reports -->
