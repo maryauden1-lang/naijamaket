@@ -16,6 +16,8 @@ from .models import (
     Conversation,
     Message,
     ReportedListing,
+    StaffProfile,
+    StaffActivityLog,
 )
 
 
@@ -139,7 +141,8 @@ class ListingAdmin(admin.ModelAdmin):
         "created_at",
     )
     list_filter = ("status", "is_featured", "condition", "state", "category")
-    search_fields = ("title", "description")
+    search_fields = ("title", "description", "seller__username")
+    list_editable = ("status", "is_featured")
     inlines = [ListingImageInline]
 
 
@@ -167,3 +170,32 @@ class ReportedListingAdmin(admin.ModelAdmin):
     list_display = ("listing", "reason", "reported_by", "created_at", "is_resolved")
     list_filter = ("reason", "is_resolved", "created_at")
     list_editable = ("is_resolved",)
+
+
+# =========================================================================
+# 9. CEO STAFF CONTROLS & IMMUTABLE AUDIT TRAIL (SUPERUSER ONLY)
+# =========================================================================
+@admin.register(StaffProfile)
+class StaffProfileAdmin(admin.ModelAdmin):
+    list_display = ("employee_id", "get_staff_name", "role", "phone", "is_active", "created_at")
+    list_filter = ("role", "is_active")
+    search_fields = ("employee_id", "user__username", "user__first_name", "user__last_name", "phone")
+    list_editable = ("is_active",)
+
+    def get_staff_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
+    get_staff_name.short_description = "Staff Member"
+
+
+@admin.register(StaffActivityLog)
+class StaffActivityLogAdmin(admin.ModelAdmin):
+    list_display = ("timestamp", "staff", "action", "target_object_id", "ip_address")
+    list_filter = ("action", "timestamp", "staff")
+    search_fields = ("staff__username", "target_object_id", "details", "ip_address")
+    readonly_fields = ("staff", "action", "target_object_id", "details", "ip_address", "timestamp")
+
+    def has_add_permission(self, request):
+        return False  # Audit logs can never be manually forged
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # Audit logs can never be deleted
