@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
+from django.utils import timezone
 
 
 # ==========================================
@@ -175,6 +176,11 @@ class SellerProfile(models.Model):
     is_cac_verified = models.BooleanField(default=False, verbose_name="CAC Business Verified")
     id_document = models.FileField(upload_to="verifications/", blank=True, null=True, help_text="NIN Slip or ID card for review")
     cac_document = models.FileField(upload_to="cac_verifications/", blank=True, null=True, help_text="CAC Certificate")
+    
+    # Verification Queue Locking (For Staff)
+    verification_locked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="locked_verifications")
+    verification_locked_at = models.DateTimeField(null=True, blank=True)
+    
     bio = models.TextField(blank=True, null=True)
     response_time = models.CharField(max_length=50, default="Replies typically within 1 hour")
     is_banned = models.BooleanField(default=False)
@@ -226,11 +232,18 @@ class Listing(models.Model):
     area = models.ForeignKey(Area, on_delete=models.SET_NULL, null=True)
     
     # Status & Management
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     rejection_reason = models.CharField(max_length=255, blank=True, null=True)
     is_featured = models.BooleanField(default=False)
     featured_until = models.DateTimeField(blank=True, null=True)
     views_count = models.PositiveIntegerField(default=0)
+    
+    # Automated Staff Queue Locking System
+    locked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="locked_listings")
+    locked_at = models.DateTimeField(null=True, blank=True)
+    moderated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="moderated_listings")
+    moderated_at = models.DateTimeField(null=True, blank=True)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -248,8 +261,14 @@ class Listing(models.Model):
             self.slug = slug
         super().save(*args, **kwargs)
 
+    def is_locked(self):
+        """Check if listing is currently locked by a staff member for less than 10 minutes"""
+        if self.locked_by and self.locked_at:
+            return (timezone.now() - self.locked_at).total_seconds() < 600
+        return False
+
     def __str__(self):
-        return f"{self.title} - ₦{self.price}"
+        return f"{self.title} - ₦{self.price} ({self.get_status_display()})"
 
 
 class ListingImage(models.Model):
@@ -331,9 +350,59 @@ class ReportedListing(models.Model):
     details = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_resolved = models.BooleanField(default=False)
+    resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="resolved_reports")
+    resolution_notes = models.TextField(blank=True, null=True)
 
     class Meta:
         ordering = ["-created_at"]
 
     def __str__(self):
         return f"Report: {self.listing.title} ({self.get_reason_display()})"
+
+
+# ==========================================
+# 9. ENTERPRISE STAFF WORKSPACE & AUDIT ENGINE
+# ==========================================
+class StaffProfile(models.Model):
+    ROLE_CHOICES = (
+        ("moderator", "Ad Reviewer / Content Moderator"),
+        ("verification_officer", "KYC & Identity Verification Officer"),
+        ("customer_support", "Customer Support & Dispute Handler"),
+    )
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="staff_profile")
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES, default="moderator")
+    employee_id = models.CharField(max_length=20, unique=True, help_text="e.g. NM-STF-001")
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    is_active = models.BooleanField(default=True, help_text="Instant CEO Kill-Switch: Untick to lock staff out immediately")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.get_full_name() or self.user.username} [{self.get_role_display()}]"
+
+
+class StaffActivityLog(models.Model):
+    ACTION_CHOICES = (
+        ("approve_ad", "Approved Listing"),
+        ("reject_ad", "Rejected Listing"),
+        ("verify_nin", "Approved NIN Verification"),
+        ("reject_nin", "Rejected NIN Verification"),
+        ("resolve_report", "Resolved Dispute / Report"),
+        ("ban_user", "Suspended / Banned User Account"),
+        ("unban_user", "Reactivated User Account"),
+    )
+
+    staff = models.ForeignKey(User, on_delete=models.CASCADE, related_name="staff_logs")
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES)
+    target_object_id = models.CharField(max_length=100, help_text="ID or Title of the Ad/User touched")
+    details = models.TextField(help_text="Details, feedback, or rejection reasons given")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-timestamp"]
+        verbose_name = "Staff Activity Audit Log"
+        verbose_name_plural = "Staff Activity Audit Logs"
+
+    def __str__(self):
+        return f"{self.staff.username} -> {self.get_action_display()} on {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
