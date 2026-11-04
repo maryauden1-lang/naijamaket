@@ -28,7 +28,7 @@
         <i data-lucide="arrow-left" class="w-4 h-4"></i>
         <span>Dashboard</span>
       </a>
-      <span class="font-extrabold text-sm sm:text-base">Store & Shop Profile</span>
+      <span class="font-extrabold text-sm sm:text-base">Store & Verification Profile</span>
       <a href="{% url 'marketplace:home' %}" class="text-white/80 hover:text-white text-xs font-semibold">Home</a>
     </div>
   </header>
@@ -37,7 +37,7 @@
   {% if messages %}
     <div class="max-w-3xl mx-auto px-4 mt-4 w-full">
       {% for message in messages %}
-        <div class="p-3 rounded-xl text-xs font-semibold flex items-center justify-between border {% if message.tags == 'success' %}bg-purple-50 border-purple-200 text-purple-900{% elif message.tags == 'info' %}bg-blue-50 border-blue-200 text-blue-900{% else %}bg-rose-50 border-rose-200 text-rose-800{% endif %}">
+        <div class="p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between border {% if message.tags == 'success' %}bg-purple-50 border-purple-200 text-purple-900{% elif message.tags == 'info' %}bg-blue-50 border-blue-200 text-blue-900{% else %}bg-rose-50 border-rose-200 text-rose-800{% endif %}">
           <span>{{ message }}</span>
           <button onclick="this.parentElement.remove()" class="text-slate-400">✕</button>
         </div>
@@ -45,148 +45,171 @@
     </div>
   {% endif %}
 
-  <!-- Profile Edit Container -->
-  <main class="max-w-3xl mx-auto px-4 py-6 w-full flex-1">
-    <div class="bg-white rounded-2xl p-5 sm:p-8 border border-slate-200 shadow-sm space-y-8">
+  <!-- Profile Container -->
+  <main class="max-w-3xl mx-auto px-4 py-6 w-full flex-1 space-y-6">
+
+    <!-- ======================================================== -->
+    <!-- CARD 1: DEDICATED SEPARATE KYC VERIFICATION SUBMISSION   -->
+    <!-- ======================================================== -->
+    <div class="bg-white rounded-2xl p-5 sm:p-8 border border-slate-200 shadow-sm space-y-5">
       
-      <!-- Top Title -->
-      <div>
-        <h2 class="text-lg font-black text-slate-900 flex items-center gap-2">
-          <span>Store Profile Details</span>
-          {% if profile.is_nin_verified %}
-            <span class="inline-flex items-center gap-1 bg-blue-600 text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm">
-              <i data-lucide="badge-check" class="w-3.5 h-3.5"></i>
-              VERIFIED SELLER
-            </span>
-          {% endif %}
-        </h2>
-        <p class="text-xs text-slate-400 mt-0.5">Manage your public seller presence, shop location, and identity verification badge.</p>
-      </div>
-
-      <!-- ======================================================== -->
-      <!-- KYC IDENTITY VERIFICATION MODULE -->
-      <!-- ======================================================== -->
-      <div class="border rounded-2xl p-5 {% if profile.is_nin_verified %}bg-blue-50/50 border-blue-200{% elif profile.verification_status == 'pending' %}bg-amber-50/50 border-amber-200{% elif profile.verification_status == 'rejected' %}bg-rose-50/50 border-rose-200{% else %}bg-slate-50 border-slate-200{% endif %} space-y-4">
-        
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-200/60">
-          <div>
-            <h3 class="text-sm font-black text-slate-900 flex items-center gap-1.5">
-              <i data-lucide="shield-check" class="w-4 h-4 text-purple-600"></i>
-              Identity & Merchant Verification
-            </h3>
-            <p class="text-xs text-slate-500">Verified sellers earn the official blue badge and receive up to 5x more buyer inquiries.</p>
-          </div>
-
-          <div>
-            {% if profile.is_nin_verified %}
-              <span class="inline-flex items-center gap-1 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                <i data-lucide="check" class="w-3.5 h-3.5"></i> Verified Merchant
-              </span>
-            {% elif profile.verification_status == 'pending' %}
-              <span class="inline-flex items-center gap-1 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                <i data-lucide="clock" class="w-3.5 h-3.5"></i> Under CEO Review
-              </span>
-            {% elif profile.verification_status == 'rejected' %}
-              <span class="inline-flex items-center gap-1 bg-rose-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Verification Declined
-              </span>
-            {% else %}
-              <span class="inline-flex items-center gap-1 bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1 rounded-full">
-                Unverified
-              </span>
-            {% endif %}
-          </div>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+        <div>
+          <h2 class="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+            <i data-lucide="shield-check" class="w-5 h-5 text-purple-600"></i>
+            <span>Identity & Merchant Verification</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">Submit your NIN document and snap a live camera selfie to earn the Blue Verification Badge.</p>
         </div>
 
-        <!-- Feedback alert if rejected -->
-        {% if profile.verification_status == 'rejected' and profile.verification_feedback %}
-          <div class="bg-rose-100 border border-rose-300 text-rose-800 p-3.5 rounded-xl text-xs space-y-1">
-            <p class="font-black flex items-center gap-1.5">
-              <i data-lucide="info" class="w-4 h-4"></i> Reason for Disapproval:
-            </p>
-            <p class="font-medium pl-5">{{ profile.verification_feedback }}</p>
-            <p class="text-[11px] text-rose-600 pl-5 pt-1">Please recapture a clearer live selfie or upload a valid, uncropped NIN document below to resubmit.</p>
-          </div>
-        {% endif %}
+        <div>
+          {% if profile.is_nin_verified %}
+            <span class="inline-flex items-center gap-1.5 bg-blue-600 text-white text-xs font-black px-3.5 py-1 rounded-full shadow-sm">
+              <i data-lucide="badge-check" class="w-4 h-4"></i> Verified Merchant
+            </span>
+          {% elif profile.verification_status == 'pending' %}
+            <span class="inline-flex items-center gap-1.5 bg-amber-500 text-white text-xs font-black px-3.5 py-1 rounded-full shadow-sm">
+              <i data-lucide="clock" class="w-4 h-4"></i> Pending CEO Approval
+            </span>
+          {% elif profile.verification_status == 'rejected' %}
+            <span class="inline-flex items-center gap-1.5 bg-rose-600 text-white text-xs font-black px-3.5 py-1 rounded-full shadow-sm">
+              <i data-lucide="alert-circle" class="w-4 h-4"></i> Needs Resubmission
+            </span>
+          {% else %}
+            <span class="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-xs font-black px-3 py-1 rounded-full border border-slate-200">
+              Unverified
+            </span>
+          {% endif %}
+        </div>
+      </div>
 
-        {% if not profile.is_nin_verified %}
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+      <!-- Feedback box if previously rejected -->
+      {% if profile.verification_status == 'rejected' and profile.verification_feedback %}
+        <div class="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-xs space-y-1">
+          <p class="font-black flex items-center gap-1.5 text-rose-900">
+            <i data-lucide="x-circle" class="w-4 h-4 text-rose-600"></i> Reason for Disapproval:
+          </p>
+          <p class="font-medium pl-5 text-slate-700">{{ profile.verification_feedback }}</p>
+          <p class="text-[11px] text-rose-600 pl-5 pt-1 font-bold">Please correct the issue by taking a clearer selfie or uploading a clean NIN slip below, then click Submit KYC.</p>
+        </div>
+      {% endif %}
+
+      {% if not profile.is_nin_verified %}
+        <!-- SEPARATE DEDICATED FORM FOR KYC ONLY -->
+        <form method="POST" enctype="multipart/form-data" class="space-y-5">
+          {% csrf_token %}
+          <input type="hidden" name="action_type" value="submit_kyc">
+          <input type="hidden" name="selfie_base64" id="id_selfie_base64">
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             
-            <!-- Requirement 1: NIN Document -->
-            <div class="space-y-2 bg-white p-4 rounded-xl border border-slate-200">
-              <label class="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <i data-lucide="file-text" class="w-4 h-4 text-purple-600"></i>
-                1. NIN Slip / Government ID
-              </label>
-              <p class="text-[11px] text-slate-500">Upload your NIN Slip, Voter Card, or Driver's License (PDF, PNG, JPG).</p>
-              {{ form.id_document }}
-              {% if profile.id_document %}
-                <p class="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-1">
-                  <i data-lucide="check-circle" class="w-3 h-3"></i> Document currently attached
-                </p>
-              {% endif %}
+            <!-- 1. NIN Slip Upload -->
+            <div class="space-y-2.5 bg-slate-50/70 p-4 rounded-xl border border-slate-200 flex flex-col justify-between">
+              <div>
+                <label class="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <i data-lucide="file-text" class="w-4 h-4 text-purple-600"></i>
+                  1. NIN Document / Government ID
+                </label>
+                <p class="text-[11px] text-slate-500 mt-1">Upload your clear NIN Slip, Voter Card, or Driver's License.</p>
+              </div>
+
+              <div class="pt-2">
+                <input type="file" name="id_document" id="id_document" accept="image/*,.pdf" class="block w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer">
+                {% if profile.id_document %}
+                  <p class="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-2">
+                    <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Document file currently attached
+                  </p>
+                {% endif %}
+              </div>
             </div>
 
-            <!-- Requirement 2: Live Camera Biometric Selfie -->
-            <div class="space-y-2 bg-white p-4 rounded-xl border border-slate-200">
+            <!-- 2. Live Biometric Selfie -->
+            <div class="space-y-2.5 bg-slate-50/70 p-4 rounded-xl border border-slate-200">
               <label class="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <i data-lucide="camera" class="w-4 h-4 text-purple-600"></i>
-                2. Live Biometric Face Capture
+                2. Live Biometric Face Selfie
               </label>
-              <p class="text-[11px] text-slate-500">Snap a clear photo right now. Gallery uploads are disallowed for security.</p>
-              
+              <p class="text-[11px] text-slate-500">Live snap required. No gallery photos allowed.</p>
+
+              <!-- Web Camera Preview Area -->
               <div id="cameraPreviewContainer" class="hidden space-y-3">
-                <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-slate-300">
-                  <video id="webcamVideo" autoplay playsinline class="w-full h-full object-cover"></video>
-                  <!-- Face alignment oval -->
-                  <div class="absolute inset-0 border-2 border-dashed border-white/60 rounded-full m-auto w-32 h-44 pointer-events-none"></div>
+                <div class="relative w-full aspect-square max-w-[260px] mx-auto bg-black rounded-2xl overflow-hidden border-2 border-purple-500">
+                  <video id="webcamVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                  <div class="absolute inset-0 border-2 border-dashed border-white/70 rounded-full m-auto w-36 h-48 pointer-events-none"></div>
                 </div>
-                <button type="button" id="snapPhotoBtn" class="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow">
+                <button type="button" id="snapPhotoBtn" class="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow">
                   <i data-lucide="aperture" class="w-4 h-4"></i> Take Live Snapshot
                 </button>
               </div>
 
               <!-- Captured Snapshot Preview Area -->
               <div id="snapshotDisplay" class="{% if not profile.selfie_image %}hidden{% endif %} space-y-2">
-                <div class="relative w-32 h-32 mx-auto rounded-xl overflow-hidden border-2 border-emerald-500 shadow-md">
+                <div class="relative w-32 h-32 mx-auto rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-md">
                   <img id="snapshotImg" src="{% if profile.selfie_image %}{{ profile.selfie_image.url }}{% endif %}" alt="Captured Selfie" class="w-full h-full object-cover">
                 </div>
                 <p class="text-[10px] text-center text-emerald-600 font-bold flex items-center justify-center gap-1">
-                  <i data-lucide="check" class="w-3 h-3"></i> Live photo captured
+                  <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Live face photo ready
                 </p>
-                <button type="button" id="retakeBtn" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold">
+                <button type="button" id="retakeBtn" class="w-full py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold">
                   Retake Photo
                 </button>
               </div>
 
-              <button type="button" id="openCameraBtn" class="{% if profile.selfie_image %}hidden{% endif %} w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all">
+              <!-- Open Camera Button -->
+              <button type="button" id="openCameraBtn" class="{% if profile.selfie_image %}hidden{% endif %} w-full py-2.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all">
                 <i data-lucide="camera" class="w-4 h-4"></i> Open Device Camera
               </button>
+
+              <!-- Phone Camera Shutter Fallback -->
+              <div class="pt-1">
+                <label for="nativeCameraInput" class="w-full py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer">
+                  <i data-lucide="smartphone" class="w-3.5 h-3.5 text-slate-500"></i>
+                  <span>Snap with Phone Camera Directly</span>
+                </label>
+                <input type="file" id="nativeCameraInput" accept="image/*" capture="user" class="hidden">
+              </div>
 
               <canvas id="photoCanvas" class="hidden"></canvas>
             </div>
 
           </div>
-        {% else %}
-          <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
-            <i data-lucide="badge-check" class="w-5 h-5 text-emerald-600 shrink-0"></i>
-            <span>Your merchant identity has been verified by Naijamaket. The verified badge is actively displayed on your profile and listings.</span>
-          </div>
-        {% endif %}
 
+          <!-- SEPARATE DEDICATED KYC SUBMIT BUTTON -->
+          <div class="pt-2 flex justify-end">
+            <button type="submit" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-2 transition-all">
+              <i data-lucide="send" class="w-4 h-4"></i>
+              <span>Submit KYC Documents & Selfie for Review</span>
+            </button>
+          </div>
+
+        </form>
+      {% else %}
+        <div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
+          <i data-lucide="badge-check" class="w-5 h-5 text-emerald-600 shrink-0"></i>
+          <span>Your merchant identity is verified. Your listings carry the official Blue Verification Badge.</span>
+        </div>
+      {% endif %}
+
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- CARD 2: DEDICATED GENERAL STORE DETAILS FORM             -->
+    <!-- ======================================================== -->
+    <div class="bg-white rounded-2xl p-5 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+      
+      <div>
+        <h2 class="text-base sm:text-lg font-black text-slate-900">General Store & Profile Settings</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Update your display avatar, banner, shop location, and contact numbers.</p>
       </div>
 
-      <!-- ======================================================== -->
-      <!-- REGULAR STORE INFORMATION FORM -->
-      <!-- ======================================================== -->
       <form method="POST" enctype="multipart/form-data" class="space-y-4">
         {% csrf_token %}
-        {{ form.selfie_base64 }}
+        <input type="hidden" name="action_type" value="update_profile">
 
         <!-- Avatar & Banner -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-slate-100">
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Profile Photo / Avatar</label>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Profile Avatar</label>
             {{ form.avatar }}
           </div>
           <div>
@@ -214,7 +237,7 @@
             Physical Shop / Store Address
           </label>
           {{ form.shop_address }}
-          <p class="text-[10px] text-purple-600 font-medium">e.g. Shop B12, Emab Plaza, Wuse 2, Abuja or Shop 44, Pepple Street, Computer Village, Ikeja.</p>
+          <p class="text-[10px] text-purple-600 font-medium">e.g. Shop B12, Emab Plaza, Wuse 2, Abuja or Shop 44, Computer Village, Ikeja.</p>
         </div>
 
         <!-- State & Area -->
@@ -254,26 +277,27 @@
           {{ form.bio }}
         </div>
 
-        <!-- Save Button -->
+        <!-- Separate General Save Button -->
         <div class="pt-4 flex items-center justify-end gap-3">
           <a href="{% url 'marketplace:dashboard' %}" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors">
             Cancel
           </a>
           <button type="submit" class="px-6 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs shadow-md transition-all">
-            Save & Update Profile
+            Save Store Details
           </button>
         </div>
 
       </form>
 
     </div>
+
   </main>
 
   <script>
     lucide.createIcons();
 
     // ========================================================
-    // Live Camera Capture Engine
+    // Live Camera Capture Engine (with Mobile Fallback)
     // ========================================================
     const openCameraBtn = document.getElementById('openCameraBtn');
     const cameraPreviewContainer = document.getElementById('cameraPreviewContainer');
@@ -284,36 +308,50 @@
     const snapshotImg = document.getElementById('snapshotImg');
     const retakeBtn = document.getElementById('retakeBtn');
     const selfieInput = document.getElementById('id_selfie_base64');
+    const nativeCameraInput = document.getElementById('nativeCameraInput');
 
     let streamTrack = null;
 
     if (openCameraBtn) {
       openCameraBtn.addEventListener('click', async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({
+          const constraints = {
             video: {
-              facingMode: "user",
+              facingMode: { ideal: "user" },
               width: { ideal: 640 },
               height: { ideal: 640 }
             },
             audio: false
-          });
+          };
+
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
           streamTrack = stream.getVideoTracks()[0];
           webcamVideo.srcObject = stream;
+          webcamVideo.setAttribute("playsinline", true);
+          webcamVideo.muted = true;
+          await webcamVideo.play();
+
           openCameraBtn.classList.add('hidden');
           cameraPreviewContainer.classList.remove('hidden');
         } catch (err) {
-          alert("Camera access denied or unavailable. Please enable camera permissions in your browser settings.");
+          console.error("Camera error:", err);
+          if (nativeCameraInput) {
+            nativeCameraInput.click();
+          } else {
+            alert("Camera access blocked. Please use the 'Snap with Phone Camera Directly' option.");
+          }
         }
       });
     }
 
     if (snapPhotoBtn) {
       snapPhotoBtn.addEventListener('click', () => {
-        photoCanvas.width = webcamVideo.videoWidth || 640;
-        photoCanvas.height = webcamVideo.videoHeight || 640;
+        const width = webcamVideo.videoWidth || 640;
+        const height = webcamVideo.videoHeight || 640;
+        photoCanvas.width = width;
+        photoCanvas.height = height;
         const ctx = photoCanvas.getContext('2d');
-        ctx.drawImage(webcamVideo, 0, 0, photoCanvas.width, photoCanvas.height);
+        ctx.drawImage(webcamVideo, 0, 0, width, height);
 
         const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.85);
         if (selfieInput) {
@@ -321,7 +359,6 @@
         }
         snapshotImg.src = dataUrl;
 
-        // Stop stream
         if (streamTrack) {
           streamTrack.stop();
         }
@@ -330,21 +367,33 @@
       });
     }
 
+    if (nativeCameraInput) {
+      nativeCameraInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+            const dataUrl = evt.target.result;
+            if (selfieInput) {
+              selfieInput.value = dataUrl;
+            }
+            snapshotImg.src = dataUrl;
+            if (openCameraBtn) openCameraBtn.classList.add('hidden');
+            if (cameraPreviewContainer) cameraPreviewContainer.classList.add('hidden');
+            snapshotDisplay.classList.remove('hidden');
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
     if (retakeBtn) {
-      retakeBtn.addEventListener('click', async () => {
+      retakeBtn.addEventListener('click', () => {
         snapshotDisplay.classList.add('hidden');
         if (selfieInput) {
           selfieInput.value = '';
         }
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 640 } },
-            audio: false
-          });
-          streamTrack = stream.getVideoTracks()[0];
-          webcamVideo.srcObject = stream;
-          cameraPreviewContainer.classList.remove('hidden');
-        } catch (err) {
+        if (openCameraBtn) {
           openCameraBtn.classList.remove('hidden');
         }
       });

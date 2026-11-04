@@ -9,15 +9,17 @@ from .workspace_guards import staff_workspace_required, log_staff_action
 
 @staff_workspace_required()
 def workspace_dashboard(request):
-    """Central operations dashboard for staff members"""
+    """Central operations dashboard for staff members and CEO"""
     user = request.user
-    role = getattr(user, 'staff_profile', None).role if hasattr(user, 'staff_profile') else 'ceo'
+    role = 'ceo' if user.is_superuser else getattr(user, 'staff_profile', None).role if hasattr(user, 'staff_profile') else 'staff'
 
     context = {
         'role': role,
+        'is_ceo': user.is_superuser,
         'pending_listings_count': Listing.objects.filter(status='pending').count(),
         'pending_kyc_count': SellerProfile.objects.filter(
-            Q(is_nin_verified=False) & (Q(id_document__isnull=False) & ~Q(id_document=''))
+            Q(verification_status='pending') | 
+            (Q(is_nin_verified=False) & (Q(id_document__isnull=False) & ~Q(id_document='') | Q(selfie_image__isnull=False) & ~Q(selfie_image='')))
         ).count(),
         'open_reports_count': ReportedListing.objects.filter(is_resolved=False).count(),
         'recent_my_actions': StaffActivityLog.objects.filter(staff=user)[:10],
@@ -33,14 +35,12 @@ def ad_review_queue(request):
     """
     now = timezone.now()
     
-    # 1. Check if the moderator already has an active locked ad
     ad = Listing.objects.filter(
         status='pending',
         locked_by=request.user,
         locked_at__gte=now - timezone.timedelta(minutes=10)
     ).first()
 
-    # 2. If no active lock, grab the oldest unallocated pending ad
     if not ad:
         ad = Listing.objects.filter(
             status='pending'
@@ -113,6 +113,80 @@ def ad_action(request, listing_id):
     return redirect('workspace:ad_queue')
 
 
+# ==========================================
+# CEO KYC VERIFICATION DESK (SUPERUSER ONLY)
+# ==========================================
+@staff_workspace_required()
+def kyc_review_list(request):
+    """Only the CEO/Superuser can review personal NIN documents and selfies"""
+    if not request.user.is_superuser:
+        messages.error(request, "Access Denied: Only the CEO/Superuser is authorized to inspect sensitive identity documents.")
+        return redirect('workspace:dashboard')
+
+    # Fetch all sellers pending verification review
+    pending_profiles = SellerProfile.objects.filter(
+        Q(verification_status='pending') | 
+        (Q(is_nin_verified=False) & (Q(id_document__isnull=False) & ~Q(id_document='') | Q(selfie_image__isnull=False) & ~Q(selfie_image='')))
+    ).select_related('user', 'state', 'area').order_by('-verification_submitted_at', '-id')
+
+    context = {
+        'pending_profiles': pending_profiles,
+        'total_pending': pending_profiles.count(),
+    }
+    return render(request, 'workspace/kyc_review.html', context)
+
+
+@staff_workspace_required()
+def kyc_decision_action(request, profile_id):
+    """CEO decision processor: approve blue badge or reject with custom feedback"""
+    if not request.user.is_superuser:
+        messages.error(request, "Access Denied: Superuser credentials required.")
+        return redirect('workspace:dashboard')
+
+    if request.method != 'POST':
+        return redirect('workspace:kyc_list')
+
+    profile = get_object_or_404(SellerProfile, id=profile_id)
+    decision = request.POST.get('decision')
+    feedback = request.POST.get('feedback', '').strip()
+
+    if decision == 'approve':
+        profile.is_nin_verified = True
+        profile.verification_status = 'verified'
+        profile.verification_feedback = None
+        profile.save()
+
+        log_staff_action(
+            staff_user=request.user,
+            action='verify_nin',
+            target_id=f"User #{profile.user.id} ({profile.user.username})",
+            details="CEO verified NIN and face biometric. Blue verification badge awarded.",
+            request=request
+        )
+        messages.success(request, f"Merchant '{profile.user.username}' is now verified with the official Blue Badge!")
+
+    elif decision == 'reject':
+        if not feedback:
+            messages.error(request, "Please type a reason explaining why the submission was disapproved.")
+            return redirect('workspace:kyc_list')
+
+        profile.is_nin_verified = False
+        profile.verification_status = 'rejected'
+        profile.verification_feedback = feedback
+        profile.save()
+
+        log_staff_action(
+            staff_user=request.user,
+            action='reject_nin',
+            target_id=f"User #{profile.user.id} ({profile.user.username})",
+            details=f"CEO Disapproved KYC: {feedback}",
+            request=request
+        )
+        messages.warning(request, f"Verification for '{profile.user.username}' was disapproved. Feedback sent to seller.")
+
+    return redirect('workspace:kyc_list')
+
+
 def staff_logout_view(request):
     """Safely logs out the staff member and sends them to the workspace login"""
     logout(request)
@@ -124,18 +198,14 @@ def smart_login_redirect(request):
     """
     Intelligent router after login:
     - Non-superusers with staff profiles go straight to /workspace/
-    - Superusers go to /admin/
+    - Superusers (CEO) can directly access /workspace/ with CEO tools
     - Normal buyers/sellers go to home
     """
     if not request.user.is_authenticated:
         return redirect('/admin/login/?next=/workspace/')
 
-    # CEO stays in root admin
-    if request.user.is_superuser:
-        return redirect('/admin/')
-
-    # Operational staff are forced directly into the workspace
-    if request.user.is_staff:
+    # Operational staff and CEO both route to workspace
+    if request.user.is_staff or request.user.is_superuser:
         return redirect('workspace:dashboard')
 
     return redirect('/')

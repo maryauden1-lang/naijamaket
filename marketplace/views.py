@@ -1,8 +1,11 @@
+import base64
+import uuid
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.files.base import ContentFile
 from django.db.models import Q, F, Count
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
@@ -140,7 +143,6 @@ def listing_detail_view(request, slug):
     Listing.objects.filter(pk=listing.pk).update(views_count=F('views_count') + 1)
     
     # Smart Similar Ads Engine:
-    # 1. Match subcategory or category in the same state or across Nigeria
     similar_qs = Listing.objects.filter(
         status='active'
     ).exclude(id=listing.id).select_related(
@@ -152,7 +154,6 @@ def listing_detail_view(request, slug):
     else:
         related_items = list(similar_qs.filter(category=listing.category)[:6])
 
-    # Fallback to broader category if fewer than 4 similar items found
     if len(related_items) < 4:
         existing_ids = [item.id for item in related_items] + [listing.id]
         fallback_items = similar_qs.filter(
@@ -204,7 +205,6 @@ def saved_items_view(request):
 
 @login_required(login_url='marketplace:login')
 def dashboard_view(request):
-    # Enforce separation: staff cannot use public seller dashboard
     if request.user.is_staff or request.user.is_superuser:
         messages.warning(request, "Staff accounts must use the Staff Workspace.")
         return redirect('workspace:dashboard')
@@ -327,7 +327,6 @@ def report_ad_view(request, listing_id):
 
 @login_required(login_url='marketplace:login')
 def post_ad_view(request):
-    # Enforce separation: staff cannot post listings as sellers
     if request.user.is_staff or request.user.is_superuser:
         messages.warning(request, "Staff accounts cannot post marketplace ads.")
         return redirect('workspace:dashboard')
@@ -341,7 +340,6 @@ def post_ad_view(request):
         elif form.is_valid():
             listing = form.save(commit=False)
             listing.seller = request.user
-            # Requirement #1: Put ad in pending moderation state
             listing.status = 'pending'
             listing.save()
 
@@ -352,7 +350,6 @@ def post_ad_view(request):
                     is_cover=(idx == 0)
                 )
 
-            # Polished professional confirmation message
             messages.info(
                 request,
                 "Your ad has been submitted successfully and is currently under review. "
@@ -418,7 +415,6 @@ def login_view(request):
                 user = None
 
         if user:
-            # Block staff from public seller login
             if user.is_staff or user.is_superuser:
                 messages.warning(request, "Staff accounts must use the Staff Workspace to log in.")
                 return redirect('workspace:dashboard')
@@ -441,7 +437,6 @@ def logout_view(request):
 
 @login_required(login_url='marketplace:login')
 def profile_view(request):
-    # Enforce separation: staff accounts do not manage public seller profiles
     if request.user.is_staff or request.user.is_superuser:
         messages.warning(request, "Staff accounts cannot access seller profiles.")
         return redirect('workspace:dashboard')
@@ -452,28 +447,50 @@ def profile_view(request):
     )
 
     if request.method == 'POST':
-        form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
-        if form.is_valid():
-            # Check if seller is submitting KYC verification documents (NIN or live camera selfie)
-            has_new_id = bool(request.FILES.get('id_document'))
-            has_new_selfie = bool(form.cleaned_data.get('selfie_base64'))
+        action_type = request.POST.get('action_type')
 
-            updated_profile = form.save(commit=False)
+        # ----------------------------------------------------
+        # FORM 1: DEDICATED SEPARATE KYC SUBMISSION
+        # ----------------------------------------------------
+        if action_type == 'submit_kyc':
+            id_doc = request.FILES.get('id_document')
+            selfie_b64 = request.POST.get('selfie_base64')
 
-            if has_new_id or has_new_selfie:
-                # Set verification status to pending CEO review
-                updated_profile.verification_status = 'pending'
-                updated_profile.verification_submitted_at = timezone.now()
-                # Clear previous rejection feedback on new submission
-                updated_profile.verification_feedback = None
-                messages.info(
-                    request,
-                    "Your identity documents and live biometric selfie have been submitted for CEO verification review."
-                )
+            has_id = bool(id_doc) or bool(profile.id_document)
+            has_selfie = bool(selfie_b64) or bool(profile.selfie_image)
 
-            updated_profile.save()
-            messages.success(request, "Profile details updated successfully!")
+            if not has_id or not has_selfie:
+                messages.error(request, "Both a valid NIN document and a live face selfie are required to submit for verification.")
+                return redirect('marketplace:profile')
+
+            if id_doc:
+                profile.id_document = id_doc
+
+            if selfie_b64 and ';base64,' in selfie_b64:
+                format_str, img_str = selfie_b64.split(';base64,')
+                ext = format_str.split('/')[-1]
+                if ext == 'jpeg':
+                    ext = 'jpg'
+                file_name = f"selfie_{profile.user.id}_{uuid.uuid4().hex[:8]}.{ext}"
+                profile.selfie_image.save(file_name, ContentFile(base64.b64decode(img_str)), save=False)
+
+            profile.verification_status = 'pending'
+            profile.verification_submitted_at = timezone.now()
+            profile.verification_feedback = None
+            profile.save()
+
+            messages.info(request, "Your KYC documents and biometric selfie have been submitted for review!")
             return redirect('marketplace:profile')
+
+        # ----------------------------------------------------
+        # FORM 2: GENERAL STORE DETAILS (Shop address, bio, etc.)
+        # ----------------------------------------------------
+        else:
+            form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Store profile details saved successfully!")
+                return redirect('marketplace:profile')
     else:
         form = ProfileUpdateForm(instance=profile)
 
