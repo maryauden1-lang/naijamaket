@@ -43,7 +43,7 @@
       <div class="flex items-center gap-2">
         <a href="{% url 'marketplace:profile' %}" class="bg-white/15 hover:bg-white/25 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 border border-white/20">
           <i data-lucide="store" class="w-3.5 h-3.5"></i>
-          <span class="hidden sm:inline">Store Settings</span>
+          <span class="hidden sm:inline">Store Settings & KYC</span>
         </a>
         <a href="{% url 'marketplace:post_ad' %}" class="sell-btn-orange text-white text-xs font-black px-3.5 py-1.5 rounded-xl uppercase transition-all">
           + Sell
@@ -56,7 +56,7 @@
   {% if messages %}
     <div class="max-w-7xl mx-auto px-3 sm:px-6 mt-3 w-full">
       {% for message in messages %}
-        <div class="p-3 rounded-xl text-xs font-semibold flex items-center justify-between border {% if message.tags == 'success' %}bg-purple-50 border-purple-200 text-purple-900{% else %}bg-rose-50 border-rose-200 text-rose-800{% endif %}">
+        <div class="p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between border {% if message.tags == 'success' %}bg-purple-50 border-purple-200 text-purple-900{% elif message.tags == 'info' %}bg-blue-50 border-blue-200 text-blue-900{% else %}bg-rose-50 border-rose-200 text-rose-800{% endif %}">
           <span>{{ message }}</span>
           <button onclick="this.parentElement.remove()" class="text-slate-400">✕</button>
         </div>
@@ -78,11 +78,18 @@
           {% endif %}
         </div>
         <div>
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1.5 flex-wrap">
             <h2 class="text-base sm:text-lg font-black text-slate-900">{{ user.first_name|default:user.username }}</h2>
+            
             {% if user.seller_profile.is_nin_verified %}
-              <span class="inline-flex items-center text-[10px] bg-blue-50 text-blue-700 font-extrabold px-2 py-0.5 rounded-full border border-blue-200">
-                Verified
+              <span class="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-700 font-extrabold px-2 py-0.5 rounded-full border border-blue-200 shadow-2xs">
+                <i data-lucide="badge-check" class="w-3 h-3 text-blue-600"></i>
+                Verified Merchant
+              </span>
+            {% elif user.seller_profile.verification_status == 'pending' %}
+              <span class="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 font-extrabold px-2 py-0.5 rounded-full border border-amber-200">
+                <i data-lucide="clock" class="w-3 h-3 text-amber-600"></i>
+                KYC In Review
               </span>
             {% endif %}
           </div>
@@ -95,32 +102,38 @@
         </div>
       </div>
 
-      <!-- Button to Edit Store / Shop Address -->
+      <!-- Button to Edit Store / Verification -->
       <a href="{% url 'marketplace:profile' %}" class="w-full sm:w-auto text-center bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5">
-        <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-        <span>Edit Shop Address & Social Links</span>
+        <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+        <span>Manage KYC Verification & Shop</span>
       </a>
     </div>
 
-    <!-- 3 STATS CARDS LOCKED ON THE SAME LINE (MOBILE + DESKTOP) -->
-    <div class="grid grid-cols-3 gap-2 sm:gap-4">
+    <!-- 4 STATS CARDS (MOBILE-RESPONSIVE) -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
       
       <!-- Active Ads -->
-      <div class="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border border-slate-200 shadow-2xs text-center flex flex-col justify-center">
+      <div class="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-slate-200 shadow-2xs text-center flex flex-col justify-center">
         <p class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-tight truncate">Active Ads</p>
-        <p class="text-base sm:text-3xl font-black text-purple-700 mt-0.5 sm:mt-1">{{ active_count }}</p>
+        <p class="text-lg sm:text-3xl font-black text-emerald-600 mt-0.5 sm:mt-1">{{ active_count }}</p>
+      </div>
+
+      <!-- Pending Ads -->
+      <div class="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-slate-200 shadow-2xs text-center flex flex-col justify-center">
+        <p class="text-[10px] sm:text-xs font-bold text-amber-500 uppercase tracking-tight truncate">Under Review</p>
+        <p class="text-lg sm:text-3xl font-black text-amber-600 mt-0.5 sm:mt-1">{{ pending_count }}</p>
       </div>
 
       <!-- Items Sold -->
-      <div class="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border border-slate-200 shadow-2xs text-center flex flex-col justify-center">
+      <div class="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-slate-200 shadow-2xs text-center flex flex-col justify-center">
         <p class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-tight truncate">Items Sold</p>
-        <p class="text-base sm:text-3xl font-black text-emerald-600 mt-0.5 sm:mt-1">{{ sold_count }}</p>
+        <p class="text-lg sm:text-3xl font-black text-purple-700 mt-0.5 sm:mt-1">{{ sold_count }}</p>
       </div>
 
       <!-- Total Views -->
-      <div class="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-5 border border-slate-200 shadow-2xs text-center flex flex-col justify-center">
+      <div class="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-slate-200 shadow-2xs text-center flex flex-col justify-center">
         <p class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-tight truncate">Total Views</p>
-        <p class="text-base sm:text-3xl font-black text-slate-900 mt-0.5 sm:mt-1">{{ total_views|intcomma }}</p>
+        <p class="text-lg sm:text-3xl font-black text-slate-900 mt-0.5 sm:mt-1">{{ total_views|intcomma }}</p>
       </div>
 
     </div>
@@ -141,9 +154,9 @@
         {% for item in user_listings %}
         <div class="p-3 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:bg-slate-50/50 transition-colors">
           
-          <div class="flex items-center gap-3 min-w-0">
+          <div class="flex items-start sm:items-center gap-3 min-w-0">
             <!-- Thumbnail -->
-            <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+            <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 mt-0.5 sm:mt-0">
               {% if item.images.first %}
                 <img src="{{ item.images.first.image.url }}" alt="{{ item.title }}" class="w-full h-full object-cover">
               {% else %}
@@ -155,26 +168,60 @@
 
             <!-- Title & Status -->
             <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full {% if item.status == 'active' %}bg-emerald-50 text-emerald-700 border border-emerald-200{% elif item.status == 'sold' %}bg-slate-100 text-slate-600{% else %}bg-amber-50 text-amber-700{% endif %}">
-                  {{ item.status|upper }}
-                </span>
+              <div class="flex items-center gap-2 flex-wrap">
+                {% if item.status == 'active' %}
+                  <span class="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <i data-lucide="check" class="w-2.5 h-2.5"></i> Active
+                  </span>
+                {% elif item.status == 'pending' %}
+                  <span class="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    <i data-lucide="clock" class="w-2.5 h-2.5"></i> Under Review
+                  </span>
+                {% elif item.status == 'rejected' %}
+                  <span class="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                    <i data-lucide="x" class="w-2.5 h-2.5"></i> Declined
+                  </span>
+                {% elif item.status == 'sold' %}
+                  <span class="inline-flex items-center text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                    Sold
+                  </span>
+                {% endif %}
+
                 <span class="text-[10px] text-slate-400 font-semibold">{{ item.created_at|naturaltime }}</span>
               </div>
 
-              <h4 class="font-extrabold text-slate-900 text-xs sm:text-sm mt-0.5 truncate max-w-[200px] sm:max-w-md">
+              <h4 class="font-extrabold text-slate-900 text-xs sm:text-sm mt-1 truncate max-w-[220px] sm:max-w-md">
                 {{ item.title }}
               </h4>
 
               <p class="text-xs sm:text-sm font-black text-purple-700 mt-0.5">
                 ₦{{ item.price|intcomma }}
               </p>
+
+              <!-- Rejection feedback note if declined -->
+              {% if item.status == 'rejected' and item.rejection_reason %}
+                <p class="text-[11px] text-rose-600 font-bold mt-1 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 inline-block">
+                  Declined Reason: {{ item.rejection_reason }}
+                </p>
+              {% endif %}
             </div>
           </div>
 
           <!-- Actions Buttons (Edit Ad, Mark Sold, Delete) -->
           <div class="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
             
+            <!-- View Live Ad Link (Only if Active) -->
+            {% if item.status == 'active' %}
+              <a 
+                href="{% url 'marketplace:listing_detail' item.slug %}" 
+                class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-all"
+                title="View Ad Page"
+              >
+                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                <span class="hidden sm:inline">View</span>
+              </a>
+            {% endif %}
+
             <!-- Edit Button -->
             <a 
               href="{% url 'marketplace:edit_listing' item.id %}" 
@@ -185,7 +232,7 @@
             </a>
 
             <!-- Mark Sold -->
-            {% if item.status != 'sold' %}
+            {% if item.status == 'active' %}
               <a 
                 href="{% url 'marketplace:mark_sold' item.id %}" 
                 onclick="return confirm('Mark this ad as sold?')"

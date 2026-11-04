@@ -46,7 +46,7 @@
   <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 sm:h-22 flex items-center justify-between gap-3 sm:gap-6">
       
-      <!-- Brand Logo (Prominent Standard Medium Display) -->
+      <!-- Brand Logo -->
       <a href="{% url 'marketplace:home' %}" class="flex items-center gap-2.5 group shrink-0 py-1">
         {% if settings.logo %}
           <img 
@@ -93,7 +93,7 @@
   {% endif %}
 
   <!-- Main Showcase -->
-  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 flex-1 w-full">
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 flex-1 w-full space-y-8">
     
     <!-- Breadcrumb -->
     <nav class="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-5 overflow-x-auto whitespace-nowrap">
@@ -108,6 +108,7 @@
       <span class="text-slate-700 truncate max-w-[200px]">{{ listing.title }}</span>
     </nav>
 
+    <!-- 2 Column Master Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
       
       <!-- Left Column: Gallery, Specs & Description (2 Cols) -->
@@ -215,6 +216,40 @@
           </h2>
           <div class="text-slate-700 text-sm leading-relaxed whitespace-pre-line">
             {{ listing.description }}
+          </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- REPORT THIS AD & SAFETY CONTROLS (JIJI STYLE)            -->
+        <!-- ======================================================== -->
+        <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <i data-lucide="flag" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h4 class="text-xs sm:text-sm font-bold text-slate-800">Notice something wrong with this ad?</h4>
+              <p class="text-[11px] text-slate-400">Help keep Naijamaket safe by reporting scams, fake prices, or illegal items.</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2.5 w-full sm:w-auto shrink-0">
+            <button 
+              type="button" 
+              onclick="openReportModal('fraud')" 
+              class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+              <span>Report This Ad</span>
+            </button>
+            <button 
+              type="button" 
+              onclick="openReportModal('abusive_behavior')" 
+              class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <i data-lucide="shield-alert" class="w-4 h-4"></i>
+              <span>Report Abuse</span>
+            </button>
           </div>
         </div>
 
@@ -404,7 +439,137 @@
 
     </div>
 
+    <!-- ======================================================== -->
+    <!-- SIMILAR & RELATED ADS SECTION                           -->
+    <!-- ======================================================== -->
+    <div class="pt-10 border-t border-slate-200">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h3 class="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-5 h-5 text-purple-600"></i>
+            Similar Items You May Like
+          </h3>
+          <p class="text-xs text-slate-400">Discover comparable active listings across {{ listing.state.name }} and Nigeria.</p>
+        </div>
+        <a href="{% url 'marketplace:home' %}?category={{ listing.category.slug }}" class="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1">
+          <span>See More in {{ listing.category.name }}</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+      </div>
+
+      {% if related_items %}
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+          {% for item in related_items %}
+            <a href="{% url 'marketplace:listing_detail' item.slug %}" class="group bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:-translate-y-1 transition-all flex flex-col">
+              
+              <!-- Thumbnail -->
+              <div class="relative aspect-square bg-slate-100 overflow-hidden">
+                {% if item.images.first %}
+                  <img src="{{ item.images.first.image.url }}" alt="{{ item.title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                {% else %}
+                  <div class="w-full h-full flex items-center justify-center text-slate-400">
+                    <i data-lucide="image" class="w-8 h-8"></i>
+                  </div>
+                {% endif %}
+                
+                <span class="absolute top-2 left-2 bg-slate-950/70 backdrop-blur-xs text-white text-[9px] font-bold px-2 py-0.5 rounded-md">
+                  {{ item.get_condition_display }}
+                </span>
+
+                {% if item.seller.seller_profile.is_nin_verified %}
+                  <span class="absolute top-2 right-2 bg-blue-600 text-white p-1 rounded-full shadow-xs" title="Verified Seller">
+                    <i data-lucide="check" class="w-2.5 h-2.5 stroke-[3]"></i>
+                  </span>
+                {% endif %}
+              </div>
+
+              <!-- Content Info -->
+              <div class="p-3 flex flex-col flex-1 justify-between">
+                <div>
+                  <h4 class="text-xs font-bold text-slate-900 group-hover:text-purple-700 transition-colors line-clamp-2 leading-tight">
+                    {{ item.title }}
+                  </h4>
+                  <p class="text-sm font-black text-slate-900 mt-1">₦{{ item.price|intcomma }}</p>
+                </div>
+                
+                <div class="flex items-center gap-1 text-[10px] text-slate-400 mt-2 truncate">
+                  <i data-lucide="map-pin" class="w-3 h-3 text-slate-400 shrink-0"></i>
+                  <span class="truncate">{{ item.area.name|default:item.state.name }}</span>
+                </div>
+              </div>
+
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="bg-white rounded-2xl p-8 border border-slate-200 text-center space-y-2">
+          <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <i data-lucide="package-search" class="w-5 h-5"></i>
+          </div>
+          <p class="text-xs font-bold text-slate-700">No other similar items active right now.</p>
+          <a href="{% url 'marketplace:home' %}" class="inline-block text-xs font-bold text-purple-700 hover:underline">
+            Explore All Categories
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
   </main>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: REPORT THIS AD / ABUSE (POPUP)                    -->
+  <!-- ======================================================== -->
+  <div id="reportModal" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-sm font-black text-slate-900">Submit Safety Report</h3>
+        </div>
+        <button type="button" onclick="closeReportModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-500">
+        You are reporting: <strong class="text-slate-800">{{ listing.title }}</strong>. Our trust & safety team investigates reports within 15 minutes.
+      </p>
+
+      <form method="POST" action="{% url 'marketplace:report_ad' listing.id %}" class="space-y-4">
+        {% csrf_token %}
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Reason for Report</label>
+          <select name="reason" id="reportReasonSelect" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none bg-slate-50/50">
+            <option value="fraud">Suspected Scam / Fraud</option>
+            <option value="fake_price">Fake / Unrealistic Price</option>
+            <option value="counterfeit">Counterfeit or Fake Product</option>
+            <option value="prohibited">Prohibited / Illegal Item</option>
+            <option value="unavailable">Item is already sold / not available</option>
+            <option value="abusive_behavior">Abusive / Harassing Seller Behavior</option>
+            <option value="other">Other Safety Concern</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Additional Details (Optional)</label>
+          <textarea name="details" rows="3" placeholder="Provide extra context to help our staff verify..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none bg-slate-50/50"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeReportModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md">
+            Submit Report
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
 
   <!-- Footer -->
   <footer class="bg-white border-t border-slate-200 mt-auto py-8">
@@ -423,6 +588,29 @@
     </div>
   </footer>
 
-  <script>lucide.createIcons();</script>
+  <script>
+    lucide.createIcons();
+
+    function openReportModal(defaultReason = 'fraud') {
+      const modal = document.getElementById('reportModal');
+      const select = document.getElementById('reportReasonSelect');
+      if (select && defaultReason) {
+        select.value = defaultReason;
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeReportModal() {
+      const modal = document.getElementById('reportModal');
+      modal.classList.add('hidden');
+    }
+
+    // Close on backdrop click
+    document.getElementById('reportModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeReportModal();
+      }
+    });
+  </script>
 </body>
 </html>

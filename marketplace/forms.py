@@ -1,4 +1,7 @@
+import base64
+import uuid
 from django import forms
+from django.core.files.base import ContentFile
 from django.contrib.auth.models import User
 from .models import Listing, SellerProfile, SellerReview, ReportedListing
 
@@ -75,6 +78,8 @@ class ProfileUpdateForm(forms.ModelForm):
             'class': 'block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer'
         })
     )
+    # Hidden field to capture live camera Base64 snapshot
+    selfie_base64 = forms.CharField(required=False, widget=forms.HiddenInput())
 
     class Meta:
         model = SellerProfile
@@ -90,6 +95,7 @@ class ProfileUpdateForm(forms.ModelForm):
             'facebook_handle',
             'tiktok_handle',
             'bio',
+            'id_document',
         ]
         widgets = {
             'phone_number': forms.TextInput(attrs={
@@ -127,7 +133,27 @@ class ProfileUpdateForm(forms.ModelForm):
                 'placeholder': 'Tell buyers about your shop, warranty, or delivery policies...',
                 'class': 'w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden text-sm bg-slate-50/50'
             }),
+            'id_document': forms.ClearableFileInput(attrs={
+                'class': 'block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer'
+            }),
         }
+
+    def save(self, commit=True):
+        profile = super().save(commit=False)
+        selfie_data = self.cleaned_data.get('selfie_base64')
+
+        # Convert Base64 data from live camera canvas into an uploaded image file
+        if selfie_data and ';base64,' in selfie_data:
+            format_str, img_str = selfie_data.split(';base64,')
+            ext = format_str.split('/')[-1]
+            if ext == 'jpeg':
+                ext = 'jpg'
+            file_name = f"selfie_{profile.user.id}_{uuid.uuid4().hex[:8]}.{ext}"
+            profile.selfie_image.save(file_name, ContentFile(base64.b64decode(img_str)), save=False)
+
+        if commit:
+            profile.save()
+        return profile
 
 
 class ListingForm(forms.ModelForm):

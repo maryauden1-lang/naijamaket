@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.db.models import Q, F, Count
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
+from django.utils import timezone
 
 from .models import (
     SiteSetting, StaticPage, Category, SubCategory, State, Area, Listing, 
@@ -130,16 +131,34 @@ def listing_detail_view(request, slug):
         site_settings = SiteSetting.objects.create()
 
     listing = get_object_or_404(
-        Listing.objects.select_related('seller', 'seller__seller_profile', 'category', 'subcategory', 'state', 'area').prefetch_related('images'),
+        Listing.objects.select_related(
+            'seller', 'seller__seller_profile', 'category', 'subcategory', 'state', 'area'
+        ).prefetch_related('images'),
         slug=slug
     )
     
     Listing.objects.filter(pk=listing.pk).update(views_count=F('views_count') + 1)
     
-    related_items = Listing.objects.filter(
-        category=listing.category, 
+    # Smart Similar Ads Engine:
+    # 1. Match subcategory or category in the same state or across Nigeria
+    similar_qs = Listing.objects.filter(
         status='active'
-    ).exclude(id=listing.id).select_related('seller', 'seller__seller_profile', 'area', 'state').prefetch_related('images')[:4]
+    ).exclude(id=listing.id).select_related(
+        'seller', 'seller__seller_profile', 'area', 'state'
+    ).prefetch_related('images')
+
+    if listing.subcategory:
+        related_items = list(similar_qs.filter(subcategory=listing.subcategory)[:6])
+    else:
+        related_items = list(similar_qs.filter(category=listing.category)[:6])
+
+    # Fallback to broader category if fewer than 4 similar items found
+    if len(related_items) < 4:
+        existing_ids = [item.id for item in related_items] + [listing.id]
+        fallback_items = similar_qs.filter(
+            category=listing.category
+        ).exclude(id__in=existing_ids)[: (6 - len(related_items))]
+        related_items.extend(fallback_items)
 
     is_favorited = False
     if request.user.is_authenticated:
@@ -192,12 +211,14 @@ def dashboard_view(request):
 
     user_listings = Listing.objects.filter(seller=request.user).order_by('-created_at')
     active_count = user_listings.filter(status='active').count()
+    pending_count = user_listings.filter(status='pending').count()
     sold_count = user_listings.filter(status='sold').count()
     total_views = sum(item.views_count for item in user_listings)
 
     return render(request, 'marketplace/dashboard.html', {
         'user_listings': user_listings,
         'active_count': active_count,
+        'pending_count': pending_count,
         'sold_count': sold_count,
         'total_views': total_views,
     })
@@ -298,7 +319,9 @@ def report_ad_view(request, listing_id):
             report.listing = listing
             report.reported_by = request.user
             report.save()
-            messages.success(request, "Your safety report was submitted for administrative review.")
+            messages.success(request, "Your safety report was submitted successfully. Our trust & safety team will review it shortly.")
+        else:
+            messages.error(request, "Please choose a valid reason for reporting this listing.")
     return redirect('marketplace:listing_detail', slug=listing.slug)
 
 
@@ -318,7 +341,8 @@ def post_ad_view(request):
         elif form.is_valid():
             listing = form.save(commit=False)
             listing.seller = request.user
-            listing.status = 'active'
+            # Requirement #1: Put ad in pending moderation state
+            listing.status = 'pending'
             listing.save()
 
             for idx, uploaded_file in enumerate(files):
@@ -328,8 +352,13 @@ def post_ad_view(request):
                     is_cover=(idx == 0)
                 )
 
-            messages.success(request, f"Ad published with {len(files)} photo{'s' if len(files) > 1 else ''}!")
-            return redirect('marketplace:listing_detail', slug=listing.slug)
+            # Polished professional confirmation message
+            messages.info(
+                request,
+                "Your ad has been submitted successfully and is currently under review. "
+                "Our moderation team will verify the details and activate it shortly to ensure platform quality and buyer safety."
+            )
+            return redirect('marketplace:dashboard')
     else:
         form = ListingForm()
 
@@ -425,7 +454,24 @@ def profile_view(request):
     if request.method == 'POST':
         form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
-            form.save()
+            # Check if seller is submitting KYC verification documents (NIN or live camera selfie)
+            has_new_id = bool(request.FILES.get('id_document'))
+            has_new_selfie = bool(form.cleaned_data.get('selfie_base64'))
+
+            updated_profile = form.save(commit=False)
+
+            if has_new_id or has_new_selfie:
+                # Set verification status to pending CEO review
+                updated_profile.verification_status = 'pending'
+                updated_profile.verification_submitted_at = timezone.now()
+                # Clear previous rejection feedback on new submission
+                updated_profile.verification_feedback = None
+                messages.info(
+                    request,
+                    "Your identity documents and live biometric selfie have been submitted for CEO verification review."
+                )
+
+            updated_profile.save()
             messages.success(request, "Profile details updated successfully!")
             return redirect('marketplace:profile')
     else:

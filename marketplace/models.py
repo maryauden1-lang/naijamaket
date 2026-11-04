@@ -155,6 +155,13 @@ class SubCategory(models.Model):
 # 4. USER PROFILES, STOREFRONTS & REVIEWS
 # ==========================================
 class SellerProfile(models.Model):
+    VERIFICATION_STATUS_CHOICES = (
+        ("unverified", "Unverified"),
+        ("pending", "Pending Verification Review"),
+        ("verified", "Verified"),
+        ("rejected", "Verification Rejected"),
+    )
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="seller_profile")
     phone_number = models.CharField(max_length=20)
     whatsapp_number = models.CharField(max_length=20, blank=True, null=True)
@@ -172,10 +179,14 @@ class SellerProfile(models.Model):
     tiktok_handle = models.CharField(max_length=150, blank=True, null=True, help_text="e.g. @username")
     
     # Verification & Admin Controls
+    verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS_CHOICES, default="unverified")
     is_nin_verified = models.BooleanField(default=False, verbose_name="NIN Verified Badge")
     is_cac_verified = models.BooleanField(default=False, verbose_name="CAC Business Verified")
     id_document = models.FileField(upload_to="verifications/", blank=True, null=True, help_text="NIN Slip or ID card for review")
+    selfie_image = models.ImageField(upload_to="selfies/", blank=True, null=True, help_text="Live captured camera selfie")
     cac_document = models.FileField(upload_to="cac_verifications/", blank=True, null=True, help_text="CAC Certificate")
+    verification_feedback = models.TextField(blank=True, null=True, help_text="Feedback or rejection notes from CEO/admin")
+    verification_submitted_at = models.DateTimeField(null=True, blank=True)
     
     # Verification Queue Locking (For Staff)
     verification_locked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="locked_verifications")
@@ -186,7 +197,7 @@ class SellerProfile(models.Model):
     is_banned = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.user.username} ({'Verified' if self.is_nin_verified else 'Unverified'})"
+        return f"{self.user.username} ({'Verified' if self.is_nin_verified else self.get_verification_status_display()})"
 
 
 class SellerReview(models.Model):
@@ -335,18 +346,19 @@ class Message(models.Model):
 # 8. SAFETY, FRAUD & REPORTING
 # ==========================================
 class ReportedListing(models.Model):
+    REPORT_REASONS = (
+        ("fraud", "Suspected Scam / Fraud"),
+        ("fake_price", "Fake / Unrealistic Price"),
+        ("prohibited", "Prohibited / Illegal Item"),
+        ("unavailable", "Item is already sold / not available"),
+        ("abusive_behavior", "Abusive / Harassing Seller Behavior"),
+        ("counterfeit", "Counterfeit or Fake Product"),
+        ("other", "Other Safety Concern"),
+    )
+
     listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name="reports")
     reported_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    reason = models.CharField(
-        max_length=50,
-        choices=(
-            ("fraud", "Suspected Scam / Fraud"),
-            ("fake_price", "Fake / Unrealistic Price"),
-            ("prohibited", "Prohibited / Illegal Item"),
-            ("unavailable", "Item is already sold / not available"),
-            ("other", "Other Reason"),
-        ),
-    )
+    reason = models.CharField(max_length=50, choices=REPORT_REASONS)
     details = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_resolved = models.BooleanField(default=False)
